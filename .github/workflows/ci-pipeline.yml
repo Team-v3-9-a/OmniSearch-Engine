@@ -1,0 +1,54 @@
+name: CI Microservices Check
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  # Проверка Бэкенда (Паша)
+  check-kotlin-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      # Когда Паша добавит Gradle, раскомментируешь строку ниже:
+      # - run: cd backend && ./gradlew build
+
+  # Проверка ML Движка (Миша)
+  check-python-ml:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      # Пример: проверка синтаксиса (линтер ruff работает мгновенно)
+      - run: pip install ruff
+      - run: ruff check ml-engine/ || echo "Пока игнорируем ошибки линтера"
+
+  # Проверка Фронтенда (Кирилл)
+  check-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      # Когда Кирилл закинет package.json:
+      # - run: cd frontend && npm install && npm run build
+      
+  # Проверка C++ (Никита и Артем)
+  check-cpp-engine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install CMake
+        run: sudo apt-get update && sudo apt-get install -y cmake
+      # Когда ребята напишут CMakeLists.txt:
+      # - run: cd video-engine && cmake . && make
