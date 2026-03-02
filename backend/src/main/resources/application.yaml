@@ -1,0 +1,22 @@
+ktor:
+    application:
+        modules:
+            - com.v39a.omni.ApplicationKt.module
+    deployment:
+        port: 8080
+
+storage:
+    driverClassName: "org.postgresql.Driver"
+    jdbcUrl: "jdbc:postgresql://localhost:5432/videosense"
+    username: "admin"
+    password: "password123"
+
+minio:
+    endpoint: "http://localhost:9000" # Порт API MinIO
+    accessKey: "admin"
+    secretKey: "password123"
+    bucket: "videos"
+
+qdrant:
+    host: "localhost"
+    port: 6333
