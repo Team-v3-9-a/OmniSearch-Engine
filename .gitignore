@@ -42,3 +42,11 @@ dist/
 .idea/
 .vscode/
 .DS_Store
+
+# --- Локальные данные баз данных ---
+postgres_data/
+minio_data/
+qdrant_data/
+*.db
+*.sqlite
+data/
