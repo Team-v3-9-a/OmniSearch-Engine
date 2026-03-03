@@ -1,4 +1,4 @@
-package com.v39a.omni.features.video.api
+package com.v39a.omni.feature.video.api
 
 import com.v39a.omni.feature.video.api.UploadResponse
 import com.v39a.omni.feature.video.api.VideoResponse
