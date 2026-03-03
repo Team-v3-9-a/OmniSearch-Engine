@@ -33,6 +33,7 @@ dependencies {
     implementation("org.jetbrains.exposed:exposed-jdbc:0.59.0")
     implementation(libs.postgresql)
     implementation(libs.minio)
+    implementation("io.github.cdimascio:dotenv-kotlin:6.5.1")
 
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test.junit)
