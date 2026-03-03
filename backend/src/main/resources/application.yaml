@@ -7,16 +7,16 @@ ktor:
 
 storage:
     driverClassName: "org.postgresql.Driver"
-    jdbcUrl: "jdbc:postgresql://localhost:5432/videosense"
-    username: "admin"
-    password: "password123"
+    jdbcUrl: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
 
 minio:
-    endpoint: "http://localhost:9000" # Порт API MinIO
-    accessKey: "admin"
-    secretKey: "password123"
+    endpoint: ${S3_ENDPOINT}
+    accessKey: ${S3_ACCESS_KEY}
+    secretKey: ${S3_SECRET_KEY}
     bucket: "videos"
 
 qdrant:
-    host: "localhost"
+    host: ${QDRANT_HOST}
     port: 6333
