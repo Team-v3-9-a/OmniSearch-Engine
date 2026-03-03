@@ -10,13 +10,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up JDK 17
+
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
-      # Когда Паша добавит Gradle, раскомментируешь строку ниже:
-      # - run: cd backend && ./gradlew build
+  
+      - name: Make gradlew executable
+        run: chmod +x backend/gradlew
+
+      - name: Build with Gradle
+        run: cd backend && ./gradlew buildFatJar --no-daemon
 
   # Проверка ML Движка (Миша)
   check-python-ml:
