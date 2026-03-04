@@ -1,0 +1,32 @@
+.header{
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+
+    padding: 16px 32px;
+    align-items: center;
+
+    border-bottom: 1px solid var(--separator-color);
+
+    background-color: var(--header-color);
+}
+
+.logo{
+    width: 32px;
+    height: 32px;
+}
+
+.logoText{
+    font-size: 20px;
+    margin: 0;
+    color: var(--text-primary-color);
+}
+
+.containerLogo{
+    display: flex;
+    flex-direction: row;
+    margin: 0 8px;
+    align-items: center;
+    gap: 10px;
+
+}
