@@ -1,0 +1,162 @@
+openapi: 3.0.3
+info:
+  title: OmniSearch Engine API
+  description: |
+    REST API контракты для MVP системы мультимодального поиска по видео (Control Plane). Определяет синхронный поиск и инициализацию асинхронного пайплайна загрузки.
+  version: 0.1.0
+servers:
+- url: https://virtserver.swaggerhub.com/teamv39a/OmniSearch-Engine/0.1.0
+  description: SwaggerHub API Auto Mocking
+- url: /api/v1
+  description: Основной префикс для всех эндпоинтов (MVP)
+tags:
+- name: Ingestion
+  description: Загрузка и управление медиафайлами
+- name: Retrieval
+  description: Поиск по векторизованной базе знаний
+paths:
+  /upload:
+    post:
+      tags:
+      - Ingestion
+      summary: Загрузка видеофайла в систему
+      description: "Инициализирует асинхронный процесс обработки. \nПринимает файл (<ограничения не определены>), сохраняет его в S3, создает запись в БД и возвращает ID задачи. Не дожидается окончания нарезки и транскрибации.\n"
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/upload_body"
+        required: true
+      responses:
+        "202":
+          description: Файл успешно принят и поставлен в очередь на обработку.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadResponse"
+        "400":
+          description: "Некорректный запрос (например, файл отсутствует)."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "413":
+          description: Размер файла превышает установленный лимит (500 MB).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "415":
+          description: Неподдерживаемый формат файла.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /search:
+    get:
+      tags:
+      - Retrieval
+      summary: Поиск релевантных видеороликов
+      description: "Синхронный эндпоинт. Выполняет векторизацию текста через ML Engine, \nищет ближайших соседей в Qdrant и возвращает метаданные видео из PostgreSQL.\n"
+      parameters:
+      - name: query
+        in: query
+        description: Текстовый поисковый запрос естественным языком.
+        required: true
+        schema:
+          minLength: 2
+          type: string
+      responses:
+        "200":
+          description: Успешный поиск. Возвращает отсортированный массив релевантных видео.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SearchResultItem"
+        "400":
+          description: Отсутствует или некорректен параметр запроса.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: "Внутренняя ошибка (например, недоступен ML Engine или Qdrant)."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  schemas:
+    VideoStatus:
+      type: string
+      description: Текущий статус видеоролика в пайплайне обработки.
+      enum:
+      - UPLOADED
+      - PROCESSING
+      - READY
+      - ERROR
+    UploadResponse:
+      required:
+      - status
+      - video_id
+      type: object
+      properties:
+        video_id:
+          type: string
+          format: uuid
+          example: 550e8400-e29b-41d4-a716-446655440000
+        status:
+          $ref: "#/components/schemas/VideoStatus"
+        message:
+          type: string
+          example: File successfully uploaded and queued for processing.
+    SearchResultItem:
+      required:
+      - score
+      - status
+      - video_id
+      type: object
+      properties:
+        video_id:
+          type: string
+          format: uuid
+          example: 550e8400-e29b-41d4-a716-446655440000
+        title:
+          type: string
+          description: Исходное имя загруженного файла.
+          example: presentation_v1.mp4
+        thumbnail_url:
+          type: string
+          description: Ссылка на S3 для отображения превью в интерфейсе (генерируется C++ движком).
+          format: uri
+          example: http://localhost:9000/omnisearch-bucket/thumbnails/550e8400.jpg
+        score:
+          type: number
+          description: "Метрика релевантности (например, косинусное расстояние от Qdrant)."
+          format: float
+          example: 0.89
+        status:
+          $ref: "#/components/schemas/VideoStatus"
+    ErrorResponse:
+      required:
+      - error_code
+      - message
+      type: object
+      properties:
+        error_code:
+          type: integer
+          example: 415
+        message:
+          type: string
+          example: "Unsupported Media Type. Allowed formats: mp4, mov, avi."
+    upload_body:
+      required:
+      - file
+      type: object
+      properties:
+        file:
+          type: string
+          description: Видеофайл для загрузки
+          format: binary
