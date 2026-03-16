@@ -6,8 +6,7 @@ import com.zaxxer.hikari.HikariDataSource
 import org.jetbrains.exposed.sql.Database
 
 fun Application.configureDatabase() {
-    // todo перекинуть в .env, брать через environment { config }
-    // Для старта пока оставлю так
+
     val dbUrl = environment.config.property("storage.jdbcUrl").getString()
     val dbUser = environment.config.property("storage.username").getString()
     val dbPassword = environment.config.property("storage.password").getString()
