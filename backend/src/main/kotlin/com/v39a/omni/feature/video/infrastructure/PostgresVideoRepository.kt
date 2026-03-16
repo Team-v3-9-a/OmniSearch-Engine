@@ -1,10 +1,54 @@
 package com.v39a.omni.feature.video.infrastructure
 
+import com.v39a.omni.core.util.nowUTC
 import com.v39a.omni.feature.video.domain.Video
 import com.v39a.omni.feature.video.domain.VideoRepository
+import com.v39a.omni.feature.video.domain.VideoStatus
+import com.v39a.omni.feature.video.infrastructure.VideoTable.id
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.transactions.transaction
+import java.util.UUID
 
 class PostgresVideoRepository : VideoRepository {
-    override suspend fun create(video: Video) {
-        TODO("Not yet implemented")
+    override suspend fun create(video: Video): Unit = withContext(Dispatchers.IO) {
+        transaction {
+            VideoTable.insert {
+                it[id] = video.id
+                    // todo здесь я беру название файла из пути. Нужно уточнить,
+                    //  нужно ли отдельное поле для названия, или этот вариант допустим
+                it[fileName] = video.path.substringAfterLast("/")
+                it[s3Path] = video.path
+                it[status] = video.status!!.name
+            }
+        }
+    }
+
+    override suspend fun updateStatus(id: UUID, newStatus: VideoStatus): Unit = withContext(Dispatchers.IO) {
+        transaction {
+            VideoTable.update({ VideoTable.id eq id }) {
+                it[status] = newStatus.name
+                it[updatedAt] = nowUTC() // Обновляем время при смене статуса
+            }
+        }
+    }
+
+    override suspend fun getById(id: UUID): Video? = withContext(Dispatchers.IO) {
+        transaction {
+            VideoTable.select(column = Expression.build { VideoTable.id eq id })
+                .mapNotNull { toDomainModel(it) }
+                .singleOrNull()
+        }
+    }
+
+    // маппинг строки БД в доменную модель
+    private fun toDomainModel(row: ResultRow): Video {
+        return Video(
+            id = row[id],
+            path = row[VideoTable.s3Path],
+            status = VideoStatus.valueOf(row[VideoTable.status])
+        )
     }
 }

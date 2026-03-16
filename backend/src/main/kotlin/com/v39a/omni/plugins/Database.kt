@@ -1,9 +1,11 @@
 package com.v39a.omni.plugins
 
+import com.v39a.omni.feature.video.infrastructure.VideoTable
 import io.ktor.server.application.*
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.SchemaUtils
 
 fun Application.configureDatabase() {
 
@@ -30,4 +32,6 @@ fun Application.configureDatabase() {
         environment.log.error("! Failed to connect to database: ${e.message}")
         throw e;
     }
+
+    SchemaUtils.create(VideoTable)
 }

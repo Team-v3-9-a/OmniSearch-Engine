@@ -1,8 +1,10 @@
 package com.v39a.omni.plugins
 
 import com.v39a.omni.feature.video.domain.UploadVideoUseCase
+import com.v39a.omni.feature.video.domain.VideoRepository
 import com.v39a.omni.feature.video.domain.VideoStorage
 import com.v39a.omni.feature.video.infrastructure.MinioVideoStorage
+import com.v39a.omni.feature.video.infrastructure.PostgresVideoRepository
 import io.ktor.server.application.*
 import io.minio.MinioClient
 import org.koin.dsl.module
@@ -26,6 +28,12 @@ fun Application.configureFrameworks() {
             MinioVideoStorage(
                 minioClient = get(),
                 bucket = System.getenv("MINIO_BUCKET") ?: "videos"
+            )
+        }
+
+        single<VideoRepository> {
+            PostgresVideoRepository(
+
             )
         }
 
