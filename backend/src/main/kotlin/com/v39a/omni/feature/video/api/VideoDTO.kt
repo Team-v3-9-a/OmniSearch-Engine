@@ -1,4 +1,5 @@
 package com.v39a.omni.feature.video.api
 
-class VideoDTO {
-}
+import okhttp3.MultipartBody
+
+data class VideoDTO(val name: String, val path: String, val content: MultipartBody.Part)
