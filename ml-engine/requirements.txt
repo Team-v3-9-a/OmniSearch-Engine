@@ -1,0 +1,6 @@
+funasr
+modelscope
+torchaudio
+faster-whisper
+sentence-transformers
+qdrant-client
