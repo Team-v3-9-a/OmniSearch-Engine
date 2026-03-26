@@ -4,20 +4,23 @@ import torch
 
 class MLService:
     def __init__(self):
-        print(f"Loading Whisper large-v3 (INT8) on {self.device}...")
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        print(f"Loading Whisper large-v3 (INT8) on {self.device}...")
         self.whisper = WhisperModel(
             "large-v3", 
             device=self.device, 
-            compute_type="int8" 
+            compute_type="int8",
+            download_root="/models/whisper"
         )
-        
+
+        cache_folder = "/models/sentence_transformers"
         print(f"Loading E5-base on {self.device}...")
         model_kwargs = {"torch_dtype": torch.float16} if self.device == "cuda" else {}
         self.embedder = SentenceTransformer(
             "intfloat/multilingual-e5-base", 
             device=self.device,
-            model_kwargs=model_kwargs
+            model_kwargs=model_kwargs,
+            cache_folder=cache_folder
         )
     
     # Обработка аудио в текстовые сегменты с помощью Whisper
