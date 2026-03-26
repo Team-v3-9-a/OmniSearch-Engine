@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # 1. Реляционная база данных (Postgres 15 Alpine)
   postgres:
@@ -22,13 +20,14 @@ services:
     restart: always
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: admin
-      MINIO_ROOT_PASSWORD: password123
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
     ports:
       - "9000:9000"
       - "9001:9001"
     volumes:
       - ./minio_data:/data
+      - shared_media:/app/shared_media
 
   # 3. Векторная база данных (Qdrant)
   qdrant:
@@ -50,12 +49,41 @@ services:
       - minio
       - qdrant
     environment:
-      DB_URL: jdbc:postgresql://postgres:5432/videosense
-      DB_USER: admin
-      DB_PASSWORD: password123
+      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
       
       S3_ENDPOINT: http://minio:9000
-      S3_ACCESS_KEY: admin
-      S3_SECRET_KEY: password123
-      
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
       QDRANT_HOST: qdrant
+      SHARED_MEDIA_PATH: /app/shared_media
+    volumes:
+      - shared_media:/app/shared_media
+  
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        - VITE_SERVER_HOST=http://localhost:8080
+    container_name: video-sense-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+  
+  video-engine:
+    build: ./video-engine
+    container_name: video-sense-engine
+    depends_on:
+      - minio
+    environment:
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      SHARED_MEDIA_PATH: /app/shared_media
+    volumes:
+      - shared_media:/app/shared_media
+    
+volumes:
+  shared_media:

@@ -1,4 +1,4 @@
-# --- Media & ML Weights (Для Миши, Никиты и Артема) ---
+# --- Media & ML Weights ---
 *.mp4
 *.avi
 *.mkv
@@ -9,22 +9,34 @@
 *.onnx
 models/
 weights/
-qdrant_data/
 
-# --- Python (Для Миши и тебя) ---
+.env
+.env.local
+.env.*.local
+
+# --- Python ---
 __pycache__/
 *.py[cod]
 .venv/
 venv/
-.env
 
-# --- Kotlin & Java (Для Паши) ---
+# --- Kotlin & Java ---
 *.class
 .gradle/
 build/
 out/
 
-# --- C++ (Для Никиты и Артема) ---
+# --- Go ---
+video-engine/video-engine
+video-engine/main
+video-engine/bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# --- C++ ---
 *.o
 *.obj
 *.so
@@ -33,7 +45,7 @@ out/
 cmake-build-*/
 .vs/
 
-# --- Frontend (Для Кирилла) ---
+# --- Frontend (React) ---
 node_modules/
 dist/
 .next/
@@ -42,6 +54,9 @@ dist/
 .idea/
 .vscode/
 .DS_Store
+.DS_Store
+*.swp
+*.swo
 
 # --- Локальные данные баз данных ---
 postgres_data/
