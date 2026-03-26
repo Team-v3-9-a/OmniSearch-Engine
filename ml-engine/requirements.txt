@@ -1,6 +1,13 @@
-funasr
-modelscope
+# Web
+fastapi>=0.135.0
+uvicorn[standard]>=0.40.0
+pydantic>=2.9.0
+asyncio
+
+# ML & Audio
 torchaudio
-faster-whisper
-sentence-transformers
-qdrant-client
+faster-whisper>=1.2.0
+sentence-transformers>=5.0.0
+
+# Vector DB
+qdrant-client>=1.17.0
