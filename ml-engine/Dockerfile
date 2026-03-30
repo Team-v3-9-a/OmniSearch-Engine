@@ -1,4 +1,4 @@
-FROM pytorch/pytorch:2.11.0-cuda13.0-cudnn9-runtime
+FROM pytorch/pytorch:2.11.0-cuda12.6-cudnn9-runtime
 
 # ffmpeg
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -14,7 +14,7 @@ ENV MODELSCOPE_CACHE=/models
 
 # Зависимости
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt --break-system-packages
 
 COPY ./app /app/app
 

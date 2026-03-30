@@ -39,7 +39,7 @@ class QdrantService:
     def search(self, query_embedding: list, top_k: int = 5):
         search_result = self.client.query_points(
             collection_name=self.collection_name,
-            query_vector=query_embedding,
+            query=query_embedding,
             limit=top_k
         )
         return search_result
