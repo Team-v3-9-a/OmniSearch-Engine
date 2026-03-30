@@ -1,12 +1,21 @@
 import axios from 'axios'
 
-const API_BASE_URL = `${import.meta.env.VITE_SERVER_HOST}/api/v1`
-
-export const uploadVideo = async (videoFile: FormData) => {
-    const response = await axios.post(`${API_BASE_URL}/upload`, {videoFile}, {
+export const uploadVideo = async (
+    videoFile: FormData,
+    onProgress?: (progress: number) => void
+) => {
+    const response = await axios.post(`/api/v1/videos/upload`, videoFile, {
         headers: {
             'Content-Type': 'multipart/form-data'
+        },
+        validateStatus: (status) => status < 500,
+        onUploadProgress: (progressEvent) => {
+            if (progressEvent.total) {
+                const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+                onProgress?.(percentCompleted)
+            }
         }
     })
+
     return response.data
 }
