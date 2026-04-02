@@ -23,16 +23,6 @@ fun main(args: Array<String>) {
     }
 
     EngineMain.main(args)
-
-//    val minioClient = MinioClient.builder()
-//        .endpoint(System.getenv("minio.endpoint"))
-//        .credentials(
-//            System.getenv("minio.accessKey"),
-//            System.getenv("minio.secretKey"),
-//        )
-//        .build()
-//
-//    val videoStorage = MinioVideoStorage(minioClient, System.getenv("minio.bucket"))
 }
 
 fun Application.module() {
@@ -41,4 +31,5 @@ fun Application.module() {
     configureHTTP()
     configureRouting()
     configureDatabase()
+    configureCORS()
 }
