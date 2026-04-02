@@ -6,7 +6,6 @@
 *.pth
 *.bin
 *.onnx
-models/
 weights/
 
 .env
@@ -17,6 +16,8 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+.env
+model_cache/
 
 *.class
 .gradle/

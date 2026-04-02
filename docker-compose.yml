@@ -84,6 +84,28 @@ services:
       SHARED_MEDIA_PATH: /app/shared_media
     volumes:
       - shared_media:/app/shared_media
-    
-volumes:
-  shared_media:
+      
+  ml_engine:
+    build: ./ml-engine
+    container_name: video-sense-ml
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: 6333
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+    volumes:
+      - ./model_cache:/models
+      - ./test_audio:/app/test_audio
+    depends_on:
+      - qdrant
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
