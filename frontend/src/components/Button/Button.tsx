@@ -1,11 +1,13 @@
 import styles from './Button.module.css'
 import uploadIcon from '../../assets/Icons/UploadIcon.svg';
-import {useRef, useState} from "react";
-import {uploadVideo} from "../../api";
-import {toast} from "react-toastify";
+import { useRef } from "react";
+import { uploadVideo } from "../../api";
+import { toast } from "react-toastify";
+import * as React from "react";
+import { useUploadStore } from "../../store/useUploadStore.ts";
 
 const Button = () => {
-    const [status, setStatus] = useState<'IDLE' | 'UPLOADING' | 'SUCCESS' | 'ERROR'>('IDLE')
+    const {addTask, updateProgress, updateStatus} = useUploadStore()
 
     const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -15,21 +17,30 @@ const Button = () => {
 
     const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0]
-
         if(!file) return
+
+        const localId = crypto.randomUUID()
 
         const formData = new FormData();
 
         formData.append('video', file)
         formData.append('title', file.name)
 
-        setStatus('UPLOADING')
+        addTask(localId, file.name)
 
         try {
-            await uploadVideo(formData)
+            const data = await uploadVideo(formData, (progress) => {
+                updateProgress(localId, progress)
+            })
+            updateStatus(localId, 'SUCCESS', data.id)
+            toast.success(`Видео ${file.name} загружено`)
         } catch (e) {
-            setStatus('ERROR');
-            toast(`Ошибка загрузки видео - ${status}`)
+            updateStatus(localId, 'ERROR')
+            toast.error(`Ошибка`)
+        } finally {
+            if (event.target) {
+                event.target.value = ''
+            }
         }
     }
 
