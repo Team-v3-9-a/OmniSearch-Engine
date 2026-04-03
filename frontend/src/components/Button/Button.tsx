@@ -34,7 +34,7 @@ const Button = () => {
             })
             updateStatus(localId, 'SUCCESS', data.id)
             toast.success(`Видео ${file.name} загружено`)
-        } catch (e) {
+        } catch {
             updateStatus(localId, 'ERROR')
             toast.error(`Ошибка`)
         } finally {
