@@ -1,10 +1,8 @@
 package com.v39a.omni
-import com.v39a.omni.feature.video.infrastructure.MinioVideoStorage
 import com.v39a.omni.plugins.*
 import io.github.cdimascio.dotenv.dotenv
 import io.ktor.server.application.*
 import io.ktor.server.netty.*
-import io.minio.MinioClient
 
 
 fun main(args: Array<String>) {
@@ -32,4 +30,5 @@ fun Application.module() {
     configureRouting()
     configureDatabase()
     configureCORS()
+    configureExceptions()
 }

@@ -2,19 +2,20 @@ package com.v39a.omni.feature.video.api
 
 import com.v39a.omni.feature.video.domain.UploadVideoCommand
 import com.v39a.omni.feature.video.domain.UploadVideoUseCase
-
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.content.PartData
-import io.ktor.http.content.PartData.FileItem
-import io.ktor.http.content.forEachPart
-import io.ktor.server.request.receiveMultipart
+import io.ktor.http.*
+import io.ktor.http.content.*
+import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import io.ktor.utils.io.jvm.javaio.toInputStream
-
-import java.util.UUID
+import io.ktor.utils.io.jvm.javaio.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.slf4j.LoggerFactory
+import java.util.*
 
 fun Route.videoRoutes(uploadVideoUseCase: UploadVideoUseCase) {
+    val logger = LoggerFactory.getLogger(javaClass)
+
     route("/api/v1/videos") {
 
         // MOCK: GET /search
@@ -45,8 +46,12 @@ fun Route.videoRoutes(uploadVideoUseCase: UploadVideoUseCase) {
 
         // POST /upload
         post("/upload") {
+            //todo разобраться как его отключить или настроить иным образом, чтобы не было неявных лимитов
+            call.formFieldLimit = 500L * 1024 * 1024 * 1024
+
             val multipart = call.receiveMultipart()
             var uploadResponse: UploadResponse? = null
+            logger.info("received file upload")
 
             multipart.forEachPart { part ->
                 when (part) {
@@ -55,16 +60,22 @@ fun Route.videoRoutes(uploadVideoUseCase: UploadVideoUseCase) {
                         val fileName = part.originalFileName ?: "unknown_video.mp4"
                         val contentType = part.contentType?.toString() ?: "video/mp4"
 
-                        val inputStream = part.provider().toInputStream()
+                        val channel = part.provider()
 
                         // Command-объект для передачи в Domain-слой
-                        val command = UploadVideoCommand(
-                            fileName = fileName,
-                            contentType = contentType,
-                            contentStream = inputStream
-                        )
+                        val video = withContext(Dispatchers.IO) {
 
-                        val video = uploadVideoUseCase.execute(command)
+                            channel.toInputStream().use { inputStream ->
+
+                                val command = UploadVideoCommand(
+                                    fileName = fileName,
+                                    contentType = contentType,
+                                    contentStream = inputStream,
+                                )
+
+                                uploadVideoUseCase.execute(command)
+                            }
+                        }
 
                         uploadResponse = UploadResponse(
                             id = video.id.toString(),

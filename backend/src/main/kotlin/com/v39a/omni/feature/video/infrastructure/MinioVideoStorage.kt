@@ -40,10 +40,9 @@ class MinioVideoStorage(
                 // Путь, по которому файл можно будет идентифицировать.
                 // В зависимости от логики ML/C++ движков, можно возвращать полный URL
                 "$bucket/$fileName"
-
+                return@withContext "$bucket/$fileName"
             } catch (e: Exception) {
-                println("Failed to upload object to MinIO: ${e.message}")
-                throw RuntimeException("MinIO upload failed", e)
+                throw RuntimeException("MinIO upload failed: ${e.message}", e)
             } finally {
                 stream.close()
             }
