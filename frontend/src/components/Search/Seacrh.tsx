@@ -1,5 +1,5 @@
 import styles from './Search.module.css'
-import searchIcon from '../../assets/Icons/SearchIcon.svg'
+import searchIcon from '../../assets/Icons/Search_Magnifying_Glass.svg'
 import {useState} from "react";
 import {toast} from "react-toastify";
 

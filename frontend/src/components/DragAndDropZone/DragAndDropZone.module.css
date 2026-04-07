@@ -1,0 +1,17 @@
+.dragAndDropZone {
+  border: 3px dotted var(--accent-color);
+  width: 240px;
+  border-radius: 12px;
+  padding: 0 12px;
+  align-content: center;
+  justify-items: center;
+}
+
+.dragging {
+  border: 3px dotted var(--green);
+}
+
+.dragText {
+  color: var(--text-primary-color);
+  pointer-events: none;
+}

@@ -1,7 +1,8 @@
 import './App.css'
-import Header from "./components/Header/Header.tsx";
 import MainPage from "./components/Pages/MainPage/MainPage.tsx";
 import {ToastContainer} from "react-toastify";
+import Header from "@/components/Header/Header.tsx";
+import UploadProgress from "@/components/UploadProgress/UploadProgress.tsx";
 
 function App() {
   return (
@@ -9,6 +10,7 @@ function App() {
       <Header />
       <MainPage />
       <ToastContainer />
+      <UploadProgress/>
     </div>
   )
 }
