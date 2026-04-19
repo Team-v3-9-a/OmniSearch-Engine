@@ -55,6 +55,7 @@ dist/
 postgres_data/
 minio_data/
 qdrant_data/
+model_cache/
 *.db
 *.sqlite
 data/

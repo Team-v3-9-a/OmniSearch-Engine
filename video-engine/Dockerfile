@@ -15,5 +15,5 @@ RUN mkdir -p /app/shared_media && chmod 777 /app/shared_media
 
 COPY . .
 
-# Заглушка, потом поменять на CMD ["go", "run", "main.go"]
-CMD ["tail", "-f", "/dev/null"]
+# Создаём маркер-файл для healthcheck и держим контейнер живым
+CMD ["sh", "-c", "touch /app/shared_media/.keep && tail -f /dev/null"]

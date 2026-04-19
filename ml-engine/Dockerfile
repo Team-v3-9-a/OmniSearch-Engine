@@ -1,8 +1,9 @@
 FROM pytorch/pytorch:2.11.0-cuda12.6-cudnn9-runtime
 
-# ffmpeg
+# ffmpeg + wget (нужен для healthcheck в docker-compose)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
+    wget \
     && rm -rf /var/lib/apt/lists/*
 
 # Рабочая директория
@@ -14,7 +15,7 @@ ENV MODELSCOPE_CACHE=/models
 
 # Зависимости
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt --break-system-packages
+RUN pip install --default-timeout=100 --no-cache-dir -r requirements.txt --break-system-packages
 
 COPY ./app /app/app
 
