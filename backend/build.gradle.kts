@@ -32,6 +32,7 @@ dependencies {
     implementation("org.jetbrains.exposed", "exposed-jdbc", "0.59.0")
     implementation("org.jetbrains.exposed", "exposed-dao", "0.59.0")
     implementation("org.jetbrains.exposed:exposed-kotlin-datetime:0.59.0")
+    implementation("io.ktor:ktor-server-status-pages:2.3.4")
     implementation(libs.postgresql)
     implementation(libs.minio)
     implementation("io.github.cdimascio:dotenv-kotlin:6.5.1")
