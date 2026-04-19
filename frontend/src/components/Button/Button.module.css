@@ -28,4 +28,9 @@
         background-color: var(--button-hover-color);
         transition: background-color 0.3s ease-in-out;
     }
+
+    &:active{
+        scale: 0.9;
+        transition: scale 0.2s ease-in-out;
+    }
 }

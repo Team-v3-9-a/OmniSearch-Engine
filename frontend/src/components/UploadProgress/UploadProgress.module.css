@@ -1,0 +1,84 @@
+.hidden {
+  display: none;
+}
+
+.uploadProgress {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background-color: var(--white);
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--separator-color);
+  display: flex;
+  flex-direction: column;
+  gap: 12px
+}
+
+.progressList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px
+}
+
+.downloadTitle {
+  color: var(--text-primary-color);
+}
+
+.taskItem {
+  display: flex;
+  flex-direction: column;
+}
+
+.separator{
+  width: 100%;
+  height: 1px;
+  background-color: var(--separator-color);
+}
+
+.task{
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.taskTitle {
+  color: var(--text-secondary-color);
+}
+
+.progress{
+  color: var(--text-primary-color);
+}
+
+.progressBarWrapper {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.progressBar{
+  background-color: var(--green);
+  border-radius: 3px;
+  height: 6px;
+}
+
+.statusTitle{
+  color: var(--text-primary-color)
+}
+
+.statusContainer {
+  display: flex;
+  gap: 8px
+}
+
+.UPLOADING {
+  color: grey
+}
+
+.SUCCESS {
+  color: var(--green)
+}
+
+.ERROR {
+  color: red
+}

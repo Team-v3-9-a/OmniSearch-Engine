@@ -28,5 +28,9 @@
     margin: 0 8px;
     align-items: center;
     gap: 10px;
+}
 
+.uploadContainer {
+    display: flex;
+    gap: 12px
 }
