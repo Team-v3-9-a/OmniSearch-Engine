@@ -1,5 +1,6 @@
 package com.v39a.omni.feature.video.domain
 
+import com.v39a.omni.core.util.nowUTC
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.InputStream
@@ -8,6 +9,9 @@ import java.util.UUID
 data class UploadVideoCommand(
     val fileName: String,
     val contentType: String,
+    val title: String,
+    val thumbnailPath: String,
+    val durationSeconds: Int,
     val contentStream: InputStream
 )
 
@@ -29,6 +33,10 @@ class UploadVideoUseCase(
         val video = Video(
             id = videoId,
             path = s3Path,
+            title = command.title,
+            durationSeconds = command.durationSeconds,
+            createdAt = nowUTC(),
+            thumbnailPath = command.thumbnailPath,
             status = VideoStatus.UPLOADED
         )
 

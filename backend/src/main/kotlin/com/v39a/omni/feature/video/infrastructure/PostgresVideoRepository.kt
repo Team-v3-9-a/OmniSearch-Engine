@@ -8,7 +8,6 @@ import com.v39a.omni.feature.video.infrastructure.VideoTable.id
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.UUID
 
@@ -30,7 +29,7 @@ class PostgresVideoRepository : VideoRepository {
         transaction {
             VideoTable.update({ VideoTable.id eq id }) {
                 it[status] = newStatus.name
-                it[updatedAt] = nowUTC() // Обновляем время при смене статуса
+                it[updatedAt] = nowUTC()
             }
         }
     }
@@ -48,6 +47,10 @@ class PostgresVideoRepository : VideoRepository {
         return Video(
             id = row[id],
             path = row[VideoTable.s3Path],
+            title = row[VideoTable.title],
+            thumbnailPath = row[VideoTable.thumbnailPath],
+            durationSeconds = row[VideoTable.durationSeconds],
+            createdAt = row[VideoTable.createdAt],
             status = VideoStatus.valueOf(row[VideoTable.status])
         )
     }

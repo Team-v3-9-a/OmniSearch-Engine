@@ -1,19 +1,21 @@
 package com.v39a.omni.feature.video.api
 
+import com.v39a.omni.feature.video.domain.UpdateVideoStatusUseCase
 import com.v39a.omni.feature.video.domain.UploadVideoCommand
 import com.v39a.omni.feature.video.domain.UploadVideoUseCase
 import io.ktor.http.*
 import io.ktor.http.content.*
 import io.ktor.server.request.*
-import io.ktor.server.response.*
+import io.ktor.server.response.respond
 import io.ktor.server.routing.*
 import io.ktor.utils.io.jvm.javaio.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+
 import org.slf4j.LoggerFactory
 import java.util.*
 
-fun Route.videoRoutes(uploadVideoUseCase: UploadVideoUseCase) {
+fun Route.videoRoutes(uploadVideoUseCase: UploadVideoUseCase, updateVideoStatusUseCase: UpdateVideoStatusUseCase) {
     val logger = LoggerFactory.getLogger(javaClass)
 
     route("/api/v1/videos") {
@@ -52,49 +54,72 @@ fun Route.videoRoutes(uploadVideoUseCase: UploadVideoUseCase) {
             val multipart = call.receiveMultipart()
             var uploadResponse: UploadResponse? = null
             logger.info("received file upload")
+            var title = ""
+            var durationSeconds = 0
+            var thumbnailPath = ""
+            var filePart: PartData.FileItem? = null
 
             multipart.forEachPart { part ->
                 when (part) {
-                    is PartData.FileItem -> {
-                        // Фолбэки на случай кривого клиента
-                        val fileName = part.originalFileName ?: "unknown_video.mp4"
-                        val contentType = part.contentType?.toString() ?: "video/mp4"
-
-                        val channel = part.provider()
-
-                        // Command-объект для передачи в Domain-слой
-                        val video = withContext(Dispatchers.IO) {
-
-                            channel.toInputStream().use { inputStream ->
-
-                                val command = UploadVideoCommand(
-                                    fileName = fileName,
-                                    contentType = contentType,
-                                    contentStream = inputStream,
-                                )
-
-                                uploadVideoUseCase.execute(command)
-                            }
+                    is PartData.FormItem -> {
+                        when (part.name) {
+                            "title" -> title = part.value
+                            "durationSeconds" -> durationSeconds = part.value.toIntOrNull() ?: 0
+                            "thumbnailPath" -> thumbnailPath = part.value
                         }
-
-                        uploadResponse = UploadResponse(
-                            id = video.id.toString(),
-                            message = "Video uploaded successfully. Processing started."
-                        )
                     }
-                    else -> {
-                        // Пока ничего
-                        // Можно обрабатывать PartData.FormItem
-                        // если фронтенд передает текстовые параметры
+                    is PartData.FileItem -> {
+                        filePart = part
+                    }
+                    else -> {}
+                }
+                if (part !is PartData.FileItem) part.dispose()
+            }
+
+            if (filePart != null) {
+                val fileName = filePart.originalFileName ?: "unknown.mp4"
+                val contentType = filePart.contentType?.toString() ?: "video/mp4"
+
+                val video = withContext(Dispatchers.IO) {
+                    filePart.provider().toInputStream().use { inputStream ->
+                        val command = UploadVideoCommand(
+                            fileName = fileName,
+                            contentType = contentType,
+                            title = title,
+                            durationSeconds = durationSeconds,
+                            thumbnailPath = thumbnailPath,
+                            contentStream = inputStream,
+                        )
+                        uploadVideoUseCase.execute(command)
                     }
                 }
-                part.dispose()
-            }
-            if (uploadResponse != null) {
+                filePart.dispose()
+                uploadResponse = UploadResponse(
+                    id = video.id.toString(),
+                    message = "Video uploaded successfully. Processing started."
+                )
+
                 call.respond(HttpStatusCode.Accepted, uploadResponse)
             } else {
                 call.respond(HttpStatusCode.BadRequest, mapOf("error" to "No file found in the request"))
             }
+
+        }
+
+        put("/{id}/status") {
+            val idParam = call.parameters["id"]
+            val id = try { UUID.fromString(idParam) } catch (_: Exception) { null }
+
+            if (id == null) {
+                call.respond(HttpStatusCode.BadRequest, "Invalid UUID")
+                return@put
+            }
+
+            val request = call.receive<UpdateStatusRequest>()
+
+            updateVideoStatusUseCase.execute(id, request.status)
+
+            call.respond(HttpStatusCode.OK, mapOf("message" to "Status updated"))
         }
     }
 }
