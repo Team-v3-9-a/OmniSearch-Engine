@@ -13,6 +13,9 @@ object VideoTable : Table("videos") {
     @OptIn(ExperimentalUuidApi::class)
     val id = uuid("id")
     val fileName = varchar("file_name", 255)
+    val title = varchar("title", 255);
+    val thumbnailPath = varchar("thumbnail_path", 512)
+    val durationSeconds = integer("duration_seconds")
     val s3Path = varchar("s3_path", 512)
     val status = varchar("status", 50)
     val createdAt = datetime("created_at").clientDefault { nowUTC()
