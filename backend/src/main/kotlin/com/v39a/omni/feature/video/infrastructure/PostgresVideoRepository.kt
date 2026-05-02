@@ -1,6 +1,7 @@
 package com.v39a.omni.feature.video.infrastructure
 
 import com.v39a.omni.core.util.nowUTC
+import com.v39a.omni.feature.video.domain.UpdateVideoMetadataCommand
 import com.v39a.omni.feature.video.domain.Video
 import com.v39a.omni.feature.video.domain.VideoRepository
 import com.v39a.omni.feature.video.domain.VideoStatus
@@ -39,6 +40,19 @@ class PostgresVideoRepository : VideoRepository {
             VideoTable.select(column = Expression.build { VideoTable.id eq id })
                 .mapNotNull { toDomainModel(it) }
                 .singleOrNull()
+        }
+    }
+
+    override suspend fun patchVideo(videoId: UUID, command: UpdateVideoMetadataCommand) {
+        transaction {
+            VideoTable.update({ VideoTable.id eq videoId }) { statement ->
+
+                command.status?.let { statement[status] = it.name }
+                command.durationSeconds?.let { statement[durationSeconds] = it.toInt() }
+                command.thumbnailPath?.let { statement[thumbnailPath] = it }
+
+                statement[updatedAt] = nowUTC()
+            }
         }
     }
 

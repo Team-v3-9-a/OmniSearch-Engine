@@ -1,6 +1,7 @@
 package com.v39a.omni.feature.video.api
 
-import com.v39a.omni.feature.video.domain.UpdateVideoStatusUseCase
+import com.v39a.omni.feature.video.domain.UpdateVideoMetaUseCase
+import com.v39a.omni.feature.video.domain.UpdateVideoMetadataCommand
 import com.v39a.omni.feature.video.domain.UploadVideoCommand
 import com.v39a.omni.feature.video.domain.UploadVideoUseCase
 import io.ktor.http.*
@@ -15,14 +16,14 @@ import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
 import java.util.*
 
-fun Route.videoRoutes(uploadVideoUseCase: UploadVideoUseCase, updateVideoStatusUseCase: UpdateVideoStatusUseCase) {
+fun Route.videoRoutes(uploadVideoUseCase: UploadVideoUseCase, updateVideoMetadataUseCase: UpdateVideoMetaUseCase) {
     val logger = LoggerFactory.getLogger(javaClass)
 
-    route("/api/v1/videos") {
+    route("/api/v1") {
 
         // MOCK: GET /search
         // Принимает ?query=something
-        get("/search") {
+        get("videos/search") {
             val query = call.request.queryParameters["query"] ?: ""
 
             // Мок метаданных видео
@@ -68,9 +69,11 @@ fun Route.videoRoutes(uploadVideoUseCase: UploadVideoUseCase, updateVideoStatusU
                             "thumbnailPath" -> thumbnailPath = part.value
                         }
                     }
+
                     is PartData.FileItem -> {
                         filePart = part
                     }
+
                     else -> {}
                 }
                 if (part !is PartData.FileItem) part.dispose()
@@ -106,20 +109,41 @@ fun Route.videoRoutes(uploadVideoUseCase: UploadVideoUseCase, updateVideoStatusU
 
         }
 
-        put("/{id}/status") {
-            val idParam = call.parameters["id"]
-            val id = try { UUID.fromString(idParam) } catch (_: Exception) { null }
+        route("/internal/videos") {
+            patch("/{id}") {
+                val expectedSecret = call.application.environment.config.property("security.internalSecret").getString()
+                val providedSecret = call.request.header("X-Internal-Secret")
 
-            if (id == null) {
-                call.respond(HttpStatusCode.BadRequest, "Invalid UUID")
-                return@put
+                if (providedSecret != expectedSecret) {
+                    call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Access Denied: Internal API only"))
+                    return@patch
+                }
+
+                val idParam = call.parameters["id"]
+                val videoId = try { UUID.fromString(idParam) } catch (_: Exception) { null }
+
+                if (videoId == null) {
+                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid video UUID"))
+                    return@patch
+                }
+
+                val request = call.receive<UpdateVideoRequest>()
+
+                if (request.status == null && request.durationSeconds == null && request.thumbnailPath == null) {
+                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to "No fields to update"))
+                    return@patch
+                }
+
+                val command = UpdateVideoMetadataCommand(
+                    status = request.status,
+                    durationSeconds = request.durationSeconds,
+                    thumbnailPath = request.thumbnailPath
+                )
+
+                updateVideoMetadataUseCase.execute(videoId, command)
+
+                call.respond(HttpStatusCode.OK, mapOf("message" to "Video updated successfully"))
             }
-
-            val request = call.receive<UpdateStatusRequest>()
-
-            updateVideoStatusUseCase.execute(id, request.status)
-
-            call.respond(HttpStatusCode.OK, mapOf("message" to "Status updated"))
         }
     }
 }

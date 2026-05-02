@@ -1,6 +1,6 @@
 package com.v39a.omni.plugins
 
-import com.v39a.omni.feature.video.domain.UpdateVideoStatusUseCase
+import com.v39a.omni.feature.video.domain.UpdateVideoMetaUseCase
 import com.v39a.omni.feature.video.domain.UploadVideoUseCase
 import com.v39a.omni.feature.video.domain.VideoRepository
 import com.v39a.omni.feature.video.domain.VideoStorage
@@ -59,13 +59,13 @@ fun Application.configureFrameworks() {
         single {
             UploadVideoUseCase(
                 videoStorage = get(),
-                videoRepository = get() // todo биндинг репозитория
+                videoRepository = get()
             )
         }
 
         single {
-            UpdateVideoStatusUseCase(
-                videoRepository = get() // todo биндинг репозитория
+            UpdateVideoMetaUseCase(
+                videoRepository = get()
             )
         }
     }
