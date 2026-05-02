@@ -9,11 +9,12 @@ import (
 )
 
 // Process запускает воркеры параллельно и дожидается их выполнения
-func Process(inputPath, outAudioPath, outFramesDir string) error {
+func Process(inputPath, outAudioPath, outFramesDir string) (float64, error) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 
 	var audioErr, videoErr error
+	var duration float64
 
 	// 1. Горутина для аудио
 	go func() {
@@ -29,9 +30,9 @@ func Process(inputPath, outAudioPath, outFramesDir string) error {
 	go func() {
 		defer wg.Done()
 		fmt.Println("[Video Worker] Начинаю нарезку кадров (1 FPS)...")
-		videoErr = video.SampleFrames(inputPath, outFramesDir, 1)
+		duration, videoErr = video.SampleFrames(inputPath, outFramesDir, 1)
 		if videoErr == nil {
-			fmt.Println("[Video Worker] Успешно завершено!")
+			fmt.Println("[Video Worker] Успешно завершено! Длительность:", duration)
 		}
 	}()
 
@@ -40,11 +41,11 @@ func Process(inputPath, outAudioPath, outFramesDir string) error {
 
 	// Возвращаем ошибки, если они были
 	if audioErr != nil {
-		return fmt.Errorf("ошибка аудио: %v", audioErr)
+		return 0, fmt.Errorf("ошибка аудио: %v", audioErr)
 	}
 	if videoErr != nil {
-		return fmt.Errorf("ошибка видео: %v", videoErr)
+		return 0, fmt.Errorf("ошибка видео: %v", videoErr)
 	}
 
-	return nil
+	return duration, nil
 }
