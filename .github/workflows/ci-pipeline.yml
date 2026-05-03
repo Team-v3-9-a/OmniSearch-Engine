@@ -1,43 +1,18 @@
-name: CI Microservices Check
+name: OmniSearch CI
 
 on:
+  push:
+    branches: [ "main", "preprod" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "preprod" ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  # Проверка Бэкенда (Паша)
-  check-kotlin-backend:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-  
-      - name: Make gradlew executable
-        run: chmod +x backend/gradlew
-
-      - name: Build with Gradle
-        run: cd backend && ./gradlew buildFatJar --no-daemon
-
-  # Проверка ML Движка (Миша)
-  check-python-ml:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      # Пример: проверка синтаксиса (линтер ruff работает мгновенно)
-      - run: pip install ruff
-      - run: ruff check ml-engine/ || echo "Пока игнорируем ошибки линтера"
-
-  # Проверка Фронтенда (Кирилл)
   check-frontend:
+    name: Build Frontend
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -45,15 +20,70 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      # Когда Кирилл закинет package.json:
-      # - run: cd frontend && npm install && npm run build
-      
-  # Проверка C++ (Никита и Артем)
-  check-cpp-engine:
+          # TODO: Когда появится package-lock.json, добавить cache: 'npm'
+      - name: Install & Build
+        run: |
+          cd frontend
+          npm install
+          npm run build
+
+  check-backend:
+    name: Build Backend (Kotlin)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install CMake
-        run: sudo apt-get update && sudo apt-get install -y cmake
-      # Когда ребята напишут CMakeLists.txt:
-      # - run: cd video-engine && cmake . && make
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'gradle'
+      - name: Make gradlew executable
+        run: chmod +x backend/gradlew
+      - name: Build FatJar
+        run: cd backend && ./gradlew buildFatJar --no-daemon
+
+  check-video-engine:
+    name: Build Video Engine (Go)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: video-engine/go.sum
+      - name: Build Go code (Mock CGO)
+        run: |
+          cd video-engine
+          CGO_ENABLED=0 go build ./...
+
+  check-ml-engine:
+    name: Lint & Verify ML Engine (Python)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: ml-engine/requirements.txt
+      - name: Install dependencies & Ruff
+        run: |
+          cd ml-engine
+          pip install -r requirements.txt
+          pip install ruff
+      - name: Run Ruff Linter
+        run: |
+          cd ml-engine
+          ruff check .
+
+  smoke-test-docker:
+    name: Verify Docker Compose Build
+    runs-on: ubuntu-latest
+    needs: [check-frontend, check-backend, check-video-engine, check-ml-engine]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker images
+        run: docker compose build
