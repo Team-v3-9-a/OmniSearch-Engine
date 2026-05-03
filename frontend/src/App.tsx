@@ -1,17 +1,18 @@
 import './App.css'
-import MainPage from "./components/Pages/MainPage/MainPage.tsx";
+import MainLayout from "@/components/Pages/MainLayout/MainLayout.tsx";
 import {ToastContainer} from "react-toastify";
-import Header from "@/components/Header/Header.tsx";
 import UploadProgress from "@/components/UploadProgress/UploadProgress.tsx";
+import Header from "@/components/Header/Header.tsx";
+import {Outlet} from "react-router-dom";
 
 function App() {
   return (
-    <div className="app-container">
-      <Header />
-      <MainPage />
+    <MainLayout className="app-container">
+      <Header/>
+      <Outlet/>
       <ToastContainer />
       <UploadProgress/>
-    </div>
+    </MainLayout>
   )
 }
 

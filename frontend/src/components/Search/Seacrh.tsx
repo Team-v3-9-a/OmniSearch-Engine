@@ -10,7 +10,6 @@ const Search = () => {
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault()
 
-        // Пока тестовое поведение
         if (!searchQuery.trim()) return;
 
         setSearchQuery("")
