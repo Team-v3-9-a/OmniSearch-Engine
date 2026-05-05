@@ -8,17 +8,20 @@ import (
 )
 
 // SampleFrames извлекает кадры с заданной частотой (targetFPS).
-func SampleFrames(inputPath, outputDir string, targetFPS int) error {
+func SampleFrames(inputPath, outputDir string, targetFPS int) (float64, error) {
 	video, err := gocv.VideoCaptureFile(inputPath)
 	if err != nil {
-		return fmt.Errorf("не удалось открыть видео %s: %v", inputPath, err)
+		return 0, fmt.Errorf("не удалось открыть видео %s: %v", inputPath, err)
 	}
 	defer video.Close() // очистка C++ памяти
 
 	originalFPS := video.Get(gocv.VideoCaptureFPS)
 	if originalFPS <= 0 {
-		return fmt.Errorf("не удалось определить FPS видео")
+		return 0, fmt.Errorf("не удалось определить FPS видео")
 	}
+
+	totalFrames := video.Get(gocv.VideoCaptureFrameCount)
+	duration := totalFrames / originalFPS
 
 	frameSkip := int(originalFPS) / targetFPS
 	if frameSkip == 0 {
@@ -40,12 +43,12 @@ func SampleFrames(inputPath, outputDir string, targetFPS int) error {
 			outPath := filepath.Join(outputDir, fileName)
 
 			if success := gocv.IMWrite(outPath, img); !success {
-				return fmt.Errorf("не удалось сохранить кадр: %s", outPath)
+				return 0, fmt.Errorf("не удалось сохранить кадр: %s", outPath)
 			}
 			savedCount++
 		}
 		frameCount++
 	}
 
-	return nil
+	return duration, nil
 }
