@@ -23,6 +23,10 @@ class PostgresVideoRepository : VideoRepository {
                 it[fileName] = video.path.substringAfterLast("/")
                 it[s3Path] = video.path
                 it[status] = video.status!!.name
+
+                it[title] = video.title
+                it[durationSeconds] = video.durationSeconds
+                it[thumbnailPath] = video.thumbnailPath
             }
         }
     }
