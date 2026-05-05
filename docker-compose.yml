@@ -13,7 +13,7 @@ services:
     volumes:
       - ./postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -38,7 +38,7 @@ services:
       - shared_media:/app/shared_media
     healthcheck:
       # curl входит в minio/minio образ; /minio/health/live — официальный liveness-endpoint
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -57,7 +57,7 @@ services:
       - ./qdrant_data:/qdrant/storage
     healthcheck:
       # В образе Qdrant нет curl и wget, используем встроенную проверку открытого порта через bash
-      test: ["CMD-SHELL", "bash -c 'cat < /dev/null > /dev/tcp/localhost/6333'"]
+      test: [ "CMD-SHELL", "bash -c 'cat < /dev/null > /dev/tcp/localhost/6333'" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -86,13 +86,14 @@ services:
       S3_ENDPOINT: http://minio:9000
       S3_ACCESS_KEY: ${S3_ACCESS_KEY}
       S3_SECRET_KEY: ${S3_SECRET_KEY}
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
       QDRANT_HOST: qdrant
       SHARED_MEDIA_PATH: /app/shared_media
     volumes:
       - shared_media:/app/shared_media
     healthcheck:
       # В alpine нет bash, используем wget на существующий эндпоинт, чтобы не получать 404
-      test: ["CMD-SHELL", "wget --spider -q http://localhost:8080/api/v1/videos/search || exit 1"]
+      test: [ "CMD-SHELL", "wget --spider -q http://localhost:8080/api/v1/videos/search || exit 1" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -114,7 +115,7 @@ services:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget --spider -q http://localhost:80/ || exit 1"]
+      test: [ "CMD-SHELL", "wget --spider -q http://localhost:80/ || exit 1" ]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -138,7 +139,7 @@ services:
     volumes:
       - shared_media:/app/shared_media
     healthcheck:
-      test: ["CMD-SHELL", "test -f /app/shared_media/.keep || exit 1"]
+      test: [ "CMD-SHELL", "test -f /app/shared_media/.keep || exit 1" ]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -164,11 +165,12 @@ services:
       S3_ENDPOINT: http://minio:9000
       S3_ACCESS_KEY: ${S3_ACCESS_KEY}
       S3_SECRET_KEY: ${S3_SECRET_KEY}
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
     volumes:
       - ./model_cache:/models
     healthcheck:
       # wget устанавливается в ml-engine/Dockerfile; /health определён в app/main.py
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8000/health | grep -q 'ready' || exit 1"]
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8000/health | grep -q 'ready' || exit 1" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -181,7 +183,7 @@ services:
           devices:
             - driver: nvidia
               count: 1
-              capabilities: [gpu]
+              capabilities: [ gpu ]
 
 volumes:
   shared_media:
