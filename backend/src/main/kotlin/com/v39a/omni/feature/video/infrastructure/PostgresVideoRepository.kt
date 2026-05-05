@@ -9,6 +9,7 @@ import com.v39a.omni.feature.video.infrastructure.VideoTable.id
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.UUID
 
@@ -44,13 +45,11 @@ class PostgresVideoRepository : VideoRepository {
     }
 
     override suspend fun patchVideo(videoId: UUID, command: UpdateVideoMetadataCommand) {
-        transaction {
+        newSuspendedTransaction(Dispatchers.IO) {
             VideoTable.update({ VideoTable.id eq videoId }) { statement ->
-
                 command.status?.let { statement[status] = it.name }
                 command.durationSeconds?.let { statement[durationSeconds] = it.toInt() }
                 command.thumbnailPath?.let { statement[thumbnailPath] = it }
-
                 statement[updatedAt] = nowUTC()
             }
         }
