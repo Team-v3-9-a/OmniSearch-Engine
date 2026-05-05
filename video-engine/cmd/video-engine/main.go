@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/joho/godotenv"
+
 	// Импорт оркестратора
 	"omnisearch/video-engine/internal/pipeline"
 )
@@ -22,6 +24,11 @@ func main() {
 	videoIDPtr := flag.String("video-id", "", "ID видео")
 
 	flag.Parse()
+
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Ошибка загрузки .env файла")
+	}
 
 	if *inputPtr == "" || *outAudioPtr == "" || *outFramesPtr == "" {
 		flag.Usage()
@@ -94,6 +101,8 @@ func sendCallback(apiURL, videoID, status string, duration float64) {
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
+	apiSecret := os.Getenv("API_SECRET")
+	req.Header.Set("X-Internal-Secret", apiSecret)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
