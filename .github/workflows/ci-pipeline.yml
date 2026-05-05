@@ -54,7 +54,6 @@ jobs:
           go-version: '1.22'
           cache-dependency-path: video-engine/go.sum
       - name: Build Go code (Skip on CI)
-        # gocv.io/x/gocv жестко требует CGO и установку OpenCV. Скипаем на CI по инструкции тимлида.
         run: |
           echo "Skipping go build on CI due to OpenCV / CGO dependencies"
 
