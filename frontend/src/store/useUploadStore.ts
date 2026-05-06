@@ -1,6 +1,12 @@
 import { create } from 'zustand'
 
-export type UploadStatus = 'IDLE' | 'UPLOADING' | 'SUCCESS' | 'ERROR'
+export type UploadStatus =
+    | 'UPLOADING'
+    | 'UPLOADED'
+    | 'PROCESSING_MEDIA'
+    | 'PROCESSING_ML'
+    | 'READY'
+    | 'ERROR'
 
 export interface UploadTask {
   localId: string;
@@ -18,7 +24,7 @@ export interface UploadStore {
   removeTask: (localId: string) => void
 }
 
-export const useUploadStore = create<UploadStore>((set) => ({
+export const useUploadStore = create<UploadStore>((set, get) => ({
   tasks: {},
   addTask: (localId, filename) => set((state) => ({
     tasks: {
@@ -32,16 +38,25 @@ export const useUploadStore = create<UploadStore>((set) => ({
       [localId]: {...state.tasks[localId], progress}
     }
   })),
-  updateStatus: (localId, status, backendId) => set((state) => ({
-    tasks: {
-      ...state.tasks,
-      [localId]: {
-        ...state.tasks[localId],
-        status,
-        backendId
+  updateStatus: (localId, status, backendId) => {
+    set((state) => ({
+      tasks: {
+        ...state.tasks,
+        [localId]: {
+          ...state.tasks[localId],
+          status,
+          backendId
+        }
       }
+    }))
+
+    if (status == 'READY' || status == 'ERROR') {
+      const timeoutMs = status == 'READY' ? 10000 : 20000
+      setTimeout(() => {
+        get().removeTask(localId)
+      }, timeoutMs)
     }
-  })),
+  },
   removeTask: (localId) => set((state) => {
     const newTasks = {...state.tasks}
     delete newTasks[localId]

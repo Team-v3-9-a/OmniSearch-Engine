@@ -34,7 +34,7 @@ const Search = () => {
                 className={styles.searchButton}
                 type='submit'
             >
-                Поиск
+                Найти
             </button>
         </form>
     )

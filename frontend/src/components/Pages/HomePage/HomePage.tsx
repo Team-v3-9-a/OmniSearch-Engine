@@ -12,7 +12,7 @@ const HomePage = () => {
           </h1>
           <Search/>
           <h2>
-            Или загрузите <span className={styles.blueText}>свои</span>
+            Или загрузите <span className={styles.blueText}>СВОи</span>
           </h2>
           <div className={styles.uploadContainer}>
             <Button/>
