@@ -1,6 +1,6 @@
 module omnisearch/video-engine
 
-go 1.25
+go 1.22.2
 
 require (
 	github.com/aws/aws-sdk-go v1.55.8 // indirect
