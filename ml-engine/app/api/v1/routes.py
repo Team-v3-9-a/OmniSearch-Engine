@@ -2,6 +2,8 @@ from fastapi import APIRouter, BackgroundTasks, Depends
 import uuid
 from qdrant_client.http.models import PointStruct
 import asyncio
+import httpx
+import os
 
 from app.models.schemas import AudioProcessRequest, SearchRequest, SearchResponse, SearchResultItem
 from app.services.inference import MLService
@@ -16,31 +18,53 @@ def process_audio_task(
     ml: MLService, 
     qdrant: QdrantService
 ):
-    chunks = ml.process_audio_to_chunks(audio_path)
-    
-    points = []
-    for i, chunk in enumerate(chunks):
-        # Генерация детерминированного ID, чтобы избежать дубликатов при ретраях
-        unique_string = f"{video_id}_{i}"
-        point_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, unique_string))
-        vector = ml.get_embedding(chunk["text"], is_query=False)
-        points.append(
-            PointStruct(
-                id=point_id, 
-                vector=vector, 
-                payload={
-                    "video_id": video_id, 
-                    "text": chunk["text"], 
-                    "start_time": chunk["start_time"], 
-                    "end_time": chunk["end_time"]
-                }
+    try:
+        chunks = ml.process_audio_to_chunks(audio_path)
+
+        points = []
+        for i, chunk in enumerate(chunks):
+            # uuid5 (детерменированный)
+            unique_string = f"{video_id}_{i}"
+            point_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, unique_string))
+            vector = ml.get_embedding(chunk["text"], is_query=False)
+            points.append(
+                PointStruct(
+                    id=point_id,
+                    vector=vector,
+                    payload={
+                        "video_id": video_id,
+                        "text": chunk["text"],
+                        "start_time": chunk["start_time"],
+                        "end_time": chunk["end_time"]
+                    }
+                )
             )
-        )
-    
-    # Пакетная вставка в Qdrant
-    if points:
-        qdrant.client.upsert(collection_name=qdrant.collection_name, points=points)
-        print(f"Video {video_id} processed. {len(points)} chunks saved.")
+
+        # Пакетная вставка в Qdrant
+        if points:
+            qdrant.client.upsert(collection_name=qdrant.collection_name, points=points)
+            print(f"Video {video_id} processed. {len(points)} chunks saved.")
+
+        _send_status_callback(video_id, {"status": "READY"})
+    except Exception as e:
+        print(f"Error processing video {video_id}: {e}")
+        _send_status_callback(video_id, {"status": "ERROR", "error": str(e)})
+        raise
+
+def _send_status_callback(video_id: str, payload: dict):
+    backend_url = os.getenv("BACKEND_URL", "http://backend:8000")
+    url = f"{backend_url}/api/v1/videos/{video_id}/status"
+    for attempt in range(1, 4):
+        try:
+            with httpx.Client(timeout=10.0) as client:
+                response = client.patch(url, json=payload)
+                response.raise_for_status()
+                print(f"Callback sent for video {video_id}: {payload}")
+                return
+        except httpx.HTTPError as e:
+            print(f"Callback attempt {attempt}/3 failed for video {video_id}: {e}")
+            if attempt == 3:
+                print(f"All callback attempts exhausted for video {video_id}.")
 
 # Обработка аудио
 @router.post("/process", status_code=202)
