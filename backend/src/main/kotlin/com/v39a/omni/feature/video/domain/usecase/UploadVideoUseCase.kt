@@ -1,6 +1,10 @@
-package com.v39a.omni.feature.video.domain
+package com.v39a.omni.feature.video.domain.usecase
 
 import com.v39a.omni.core.util.nowUTC
+import com.v39a.omni.feature.video.domain.Video
+import com.v39a.omni.feature.video.domain.VideoRepository
+import com.v39a.omni.feature.video.domain.VideoStatus
+import com.v39a.omni.feature.video.domain.VideoStorage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.InputStream
@@ -35,9 +39,10 @@ class UploadVideoUseCase(
             path = s3Path,
             title = command.title,
             durationSeconds = command.durationSeconds,
-            createdAt = nowUTC(),
             thumbnailPath = command.thumbnailPath,
-            status = VideoStatus.UPLOADED
+            status = VideoStatus.UPLOADED,
+            createdAt = nowUTC(),
+            updatedAt = nowUTC(),
         )
 
         videoRepository.create(video)

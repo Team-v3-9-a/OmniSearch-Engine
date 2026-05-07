@@ -1,9 +1,8 @@
 package com.v39a.omni.feature.video.api
 
-import com.v39a.omni.feature.video.domain.UpdateVideoMetaUseCase
-import com.v39a.omni.feature.video.domain.UpdateVideoMetadataCommand
-import com.v39a.omni.feature.video.domain.UploadVideoCommand
-import com.v39a.omni.feature.video.domain.UploadVideoUseCase
+import com.v39a.omni.feature.video.domain.usecase.UpdateVideoMetadataCommand
+import com.v39a.omni.feature.video.domain.usecase.UploadVideoCommand
+import com.v39a.omni.feature.video.domain.usecase.VideoUseCases
 import io.ktor.http.*
 import io.ktor.http.content.*
 import io.ktor.server.request.*
@@ -12,11 +11,13 @@ import io.ktor.server.routing.*
 import io.ktor.utils.io.jvm.javaio.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.koin.ktor.ext.inject
 
 import org.slf4j.LoggerFactory
 import java.util.*
 
-fun Route.videoRoutes(uploadVideoUseCase: UploadVideoUseCase, updateVideoMetadataUseCase: UpdateVideoMetaUseCase) {
+fun Route.videoRoutes() {
+    val videoUseCases by inject<VideoUseCases>()
     val logger = LoggerFactory.getLogger(javaClass)
 
     route("/api/v1") {
@@ -94,7 +95,7 @@ fun Route.videoRoutes(uploadVideoUseCase: UploadVideoUseCase, updateVideoMetadat
                                 thumbnailPath = thumbnailPath,
                                 contentStream = inputStream,
                             )
-                            uploadVideoUseCase.execute(command)
+                            videoUseCases.upload.execute(command)
                         }
                     }
                     filePart.dispose()
@@ -109,6 +110,15 @@ fun Route.videoRoutes(uploadVideoUseCase: UploadVideoUseCase, updateVideoMetadat
                 }
 
             }
+
+            get("/{id}") {
+                val id = UUID.fromString(call.parameters["id"])
+
+                val video = videoUseCases.getById(id)
+
+                call.respond(HttpStatusCode.OK, video.toResponseDTO())
+            }
+
         }
 
         route("/internal/videos") {
@@ -142,7 +152,7 @@ fun Route.videoRoutes(uploadVideoUseCase: UploadVideoUseCase, updateVideoMetadat
                     thumbnailPath = request.thumbnailPath
                 )
 
-                updateVideoMetadataUseCase.execute(videoId, command)
+                videoUseCases.patchMetadata.execute(videoId, command)
 
                 call.respond(HttpStatusCode.OK, mapOf("message" to "Video updated successfully"))
             }
