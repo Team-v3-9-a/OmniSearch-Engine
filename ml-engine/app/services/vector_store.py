@@ -21,7 +21,7 @@ class QdrantService:
 
     # Добавление эмбеддинга видео в Qdrant
     def upsert_video_embedding(self, video_id: str, embedding: list, text: str, chunk_index: int = 0):
-        # Генерация детерминированного ID, чтобы избежать дубликатов при ретраях
+        # uuid5 (детерменированный)
         unique_string = f"{video_id}_{chunk_index}"
         point_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, unique_string))
         point = PointStruct(
