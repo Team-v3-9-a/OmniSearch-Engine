@@ -1,9 +1,11 @@
 package com.v39a.omni.plugins
 
-import com.v39a.omni.feature.video.domain.UpdateVideoMetaUseCase
-import com.v39a.omni.feature.video.domain.UploadVideoUseCase
+import com.v39a.omni.feature.video.domain.usecase.GetVideoUseCase
+import com.v39a.omni.feature.video.domain.usecase.UpdateVideoMetaUseCase
+import com.v39a.omni.feature.video.domain.usecase.UploadVideoUseCase
 import com.v39a.omni.feature.video.domain.VideoRepository
 import com.v39a.omni.feature.video.domain.VideoStorage
+import com.v39a.omni.feature.video.domain.usecase.VideoUseCases
 import com.v39a.omni.feature.video.infrastructure.MinioVideoStorage
 import com.v39a.omni.feature.video.infrastructure.PostgresVideoRepository
 import io.ktor.server.application.*
@@ -55,19 +57,25 @@ fun Application.configureFrameworks() {
             )
         }
 
-        // Провайдим UseCase
         single {
             UploadVideoUseCase(
                 videoStorage = get(),
                 videoRepository = get()
             )
         }
-
+        single {
+            GetVideoUseCase(
+                get()
+            )
+        }
         single {
             UpdateVideoMetaUseCase(
                 videoRepository = get()
             )
         }
+
+
+        single { VideoUseCases(get(), get(), get()) }
     }
 
     install(Koin) {
