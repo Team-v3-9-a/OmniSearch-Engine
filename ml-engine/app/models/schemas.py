@@ -4,7 +4,8 @@ from typing import List, Optional
 # Валидация данных для запроса на обработку аудио
 class AudioProcessRequest(BaseModel):
     video_id: str
-    audio_path: str
+    bucket_name: str = "video"
+    object_key: str
 
 # Валидация данных для запроса на поиск
 class SearchRequest(BaseModel):

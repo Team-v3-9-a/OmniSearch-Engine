@@ -1,55 +1,45 @@
 from fastapi import APIRouter, BackgroundTasks, Depends
 import uuid
-from qdrant_client.http.models import PointStruct
 import asyncio
 import httpx
 import os
+import time
+
 
 from app.models.schemas import AudioProcessRequest, SearchRequest, SearchResponse, SearchResultItem
 from app.services.inference import MLService
 from app.services.vector_store import QdrantService
-from app.core.dependencies import get_ml_service, get_qdrant_service
+from app.services.s3_service import S3Service
+from app.core.dependencies import get_ml_service, get_qdrant_service, get_s3_service
 
 router = APIRouter()
 
 def process_audio_task(
     video_id: str, 
-    audio_path: str, 
+    object_key: str, 
+    bucket_name: str,
     ml: MLService, 
-    qdrant: QdrantService
+    qdrant: QdrantService, 
+    s3: S3Service
 ):
+    temp_local_path = f"/tmp/{uuid.uuid4()}_audio.wav"
     try:
-        chunks = ml.process_audio_to_chunks(audio_path)
+        s3.download_file(bucket_name=bucket_name, object_key=object_key, local_path=temp_local_path)
+        chunks = ml.process_audio_to_chunks(temp_local_path)
 
-        points = []
-        for i, chunk in enumerate(chunks):
-            # uuid5 (детерменированный)
-            unique_string = f"{video_id}_{i}"
-            point_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, unique_string))
-            vector = ml.get_embedding(chunk["text"], is_query=False)
-            points.append(
-                PointStruct(
-                    id=point_id,
-                    vector=vector,
-                    payload={
-                        "video_id": video_id,
-                        "text": chunk["text"],
-                        "start_time": chunk["start_time"],
-                        "end_time": chunk["end_time"]
-                    }
-                )
-            )
-
-        # Пакетная вставка в Qdrant
-        if points:
-            qdrant.client.upsert(collection_name=qdrant.collection_name, points=points)
-            print(f"Video {video_id} processed. {len(points)} chunks saved.")
+        vectors = [ml.get_embedding(chunk["text"], is_query=False) for chunk in chunks]
+        saved = qdrant.upsert_chunks(video_id=video_id, chunks=chunks, vectors=vectors)
+        print(f"Video {video_id} processed. {saved} chunks saved.")
 
         _send_status_callback(video_id, {"status": "READY"})
     except Exception as e:
         print(f"Error processing video {video_id}: {e}")
         _send_status_callback(video_id, {"status": "ERROR", "error": str(e)})
         raise
+    
+    finally:
+        if os.path.exists(temp_local_path):
+            os.remove(temp_local_path)
 
 def _send_status_callback(video_id: str, payload: dict):
     backend_url = os.getenv("BACKEND_URL", "http://backend:8000")
@@ -65,6 +55,7 @@ def _send_status_callback(video_id: str, payload: dict):
             print(f"Callback attempt {attempt}/3 failed for video {video_id}: {e}")
             if attempt == 3:
                 print(f"All callback attempts exhausted for video {video_id}.")
+            time.sleep(2 ** attempt)
 
 # Обработка аудио
 @router.post("/process", status_code=202)
@@ -72,14 +63,18 @@ async def process_audio(
     request: AudioProcessRequest, 
     background_tasks: BackgroundTasks,
     ml_service: MLService = Depends(get_ml_service),
-    qdrant_service: QdrantService = Depends(get_qdrant_service)
+    qdrant_service: QdrantService = Depends(get_qdrant_service),
+    s3_service: S3Service = Depends(get_s3_service)
 ):
     background_tasks.add_task(
-        process_audio_task, 
-        request.video_id, 
-        request.audio_path, 
-        ml_service, 
-        qdrant_service
+        asyncio.to_thread,
+        process_audio_task,
+        request.video_id,
+        request.object_key,
+        request.bucket_name,
+        ml_service,
+        qdrant_service,
+        s3_service
     )
     return {"status": "accepted", "video_id": request.video_id}
 

@@ -12,3 +12,6 @@ sentence-transformers>=5.0.0
 
 # Vector DB
 qdrant-client>=1.17.0
+
+# S3
+boto3>=1.35.0
