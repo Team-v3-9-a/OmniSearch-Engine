@@ -10,7 +10,7 @@ data class VideoResponseDTO(
     val title: String,
     val status: String,
     val createdAt: String,
-    val updatedAt: String? = null,
+    val updatedAt: String,
 )
 
 fun Video.toResponseDTO(): VideoResponseDTO {
@@ -19,8 +19,10 @@ fun Video.toResponseDTO(): VideoResponseDTO {
         title = this.title,
         status = this.status?.name ?: VideoStatus.ERROR.name,
         createdAt = this.createdAt.toString(),
-        updatedAt = this.updatedAt?.toString()
+        updatedAt = this.updatedAt.toString()
     )
 }
+
+
 
 fun List<Video>.toResponseDTOList() = this.map { it.toResponseDTO() }
