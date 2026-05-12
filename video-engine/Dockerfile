@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
 
 COPY . .
 
-RUN go mod tidy
+RUN go mod download
 RUN go build -o bin/video-engine ./cmd/video-engine/main.go
 
 RUN mkdir -p /app/shared_media && chmod 777 /app/shared_media
