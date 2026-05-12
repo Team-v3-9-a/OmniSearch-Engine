@@ -223,8 +223,20 @@ components:
           $ref: "#/components/schemas/VideoStatus"
         durationSeconds:
           type: integer
+          description: Длительность видеоролика в секундах
+        fps:
+          type: number
+          format: float
+          description: Кадровая частота исходного видео
+        resolution:
+          type: string
+          description: Разрешение видео (например, "1920x1080")
+        frameCount:
+          type: integer
+          description: Общее количество кадров
         thumbnailPath:
           type: string
+          description: Путь к сохраненному превью в S3
 
     SearchRequest:
       required:
