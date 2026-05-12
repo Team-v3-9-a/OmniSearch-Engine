@@ -1,0 +1,172 @@
+package api
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"path/filepath"
+
+	"omnisearch/video-engine/internal/pipeline"
+	"omnisearch/video-engine/internal/s3"
+)
+
+type Server struct {
+	s3Client *s3.Client
+	mux      *http.ServeMux
+}
+
+func NewServer() (*Server, error) {
+	s3Client, err := s3.NewClient()
+	if err != nil {
+		return nil, err
+	}
+
+	mux := http.NewServeMux()
+	s := &Server{
+		s3Client: s3Client,
+		mux:      mux,
+	}
+
+	mux.HandleFunc("GET /health", s.handleHealth)
+	mux.HandleFunc("POST /process", s.handleProcess)
+
+	return s, nil
+}
+
+func (s *Server) Start(port string) error {
+	log.Printf("Запуск сервера на порту %s", port)
+	return http.ListenAndServe(port, s.mux)
+}
+
+func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
+}
+
+type ProcessRequest struct {
+	VideoID string `json:"video_id"`
+	S3Path  string `json:"s3_path"`
+}
+
+func (s *Server) handleProcess(w http.ResponseWriter, r *http.Request) {
+	var req ProcessRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if req.VideoID == "" || req.S3Path == "" {
+		http.Error(w, "video_id and s3_path are required", http.StatusBadRequest)
+		return
+	}
+
+	// Отвечаем 202 Accepted и запускаем асинхронную обработку
+	w.WriteHeader(http.StatusAccepted)
+	w.Write([]byte(`{"message": "Processing started"}`))
+
+	go s.processVideo(req.VideoID, req.S3Path)
+}
+
+func (s *Server) processVideo(videoID, s3Path string) {
+	log.Printf("Начало обработки видео %s", videoID)
+
+	baseDir := os.Getenv("SHARED_MEDIA_PATH")
+	if baseDir == "" {
+		baseDir = "/app/shared_media"
+	}
+
+	workDir := filepath.Join(baseDir, videoID)
+	os.MkdirAll(workDir, 0755)
+	
+	// В случае успеха удаляем локальные файлы, можно и при ошибке
+	defer os.RemoveAll(workDir)
+
+	localVideoPath := filepath.Join(workDir, "source.mp4")
+	outAudioPath := filepath.Join(workDir, "audio.wav")
+	outFramesDir := filepath.Join(workDir, "frames")
+
+	os.MkdirAll(outFramesDir, 0755)
+
+	ctx := context.Background()
+
+	// 1. Скачиваем видео из S3
+	err := s.s3Client.DownloadVideo(ctx, s3Path, localVideoPath)
+	if err != nil {
+		log.Printf("Ошибка скачивания видео %s: %v", videoID, err)
+		s.sendCallback(videoID, "ERROR", 0)
+		return
+	}
+
+	// 2. Локальный процессинг (audio + frames)
+	duration, err := pipeline.Process(localVideoPath, outAudioPath, outFramesDir)
+	if err != nil {
+		log.Printf("Ошибка обработки видео %s: %v", videoID, err)
+		s.sendCallback(videoID, "ERROR", 0)
+		return
+	}
+
+	// 3. Загружаем результаты обратно в S3
+	err = s.s3Client.UploadMedia(ctx, videoID, outAudioPath, outFramesDir)
+	if err != nil {
+		log.Printf("Ошибка загрузки результатов видео %s: %v", videoID, err)
+		s.sendCallback(videoID, "ERROR", 0)
+		return
+	}
+
+	// 4. Отправляем успешный callback в Backend
+	log.Printf("Успешное завершение обработки видео %s", videoID)
+	s.sendCallback(videoID, "PROCESSING_ML", duration)
+}
+
+func (s *Server) sendCallback(videoID, status string, duration float64) {
+	// Для вызова бекенда мы берем URL бекенда. Т.к. video-engine запускается в docker, backend это http://backend:8080
+	// Для тестов можно через env.
+	apiURL := os.Getenv("BACKEND_API_URL")
+	if apiURL == "" {
+		apiURL = "http://backend:8080"
+	}
+	
+	url := fmt.Sprintf("%s/api/v1/internal/videos/%s", apiURL, videoID)
+
+	payload := map[string]interface{}{
+		"status": status,
+	}
+	if duration > 0 {
+		payload["durationSeconds"] = int(duration)
+	}
+
+	data, err := json.Marshal(payload)
+	if err != nil {
+		log.Printf("Ошибка формирования JSON для callback: %v", err)
+		return
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, url, bytes.NewBuffer(data))
+	if err != nil {
+		log.Printf("Ошибка создания HTTP запроса: %v", err)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	apiSecret := os.Getenv("INTERNAL_API_SECRET")
+	if apiSecret != "" {
+		req.Header.Set("X-Internal-Secret", apiSecret)
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Printf("Ошибка отправки callback: %v", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		log.Printf("[Callback] Статус %s для видео %s успешно обновлен!", status, videoID)
+	} else {
+		log.Printf("[Callback] Неожиданный статус от сервера: %d", resp.StatusCode)
+	}
+}
