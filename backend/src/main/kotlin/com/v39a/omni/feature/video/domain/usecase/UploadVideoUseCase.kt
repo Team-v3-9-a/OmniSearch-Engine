@@ -73,7 +73,6 @@ class UploadVideoUseCase(
             }
         }
 
-        // 3. Немедленно возвращаем результат для ответа 202 Accepted
         return@withContext video
     }
 }
