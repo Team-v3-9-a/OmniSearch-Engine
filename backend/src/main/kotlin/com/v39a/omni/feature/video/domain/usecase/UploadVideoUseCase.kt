@@ -2,11 +2,15 @@ package com.v39a.omni.feature.video.domain.usecase
 
 import com.v39a.omni.core.util.nowUTC
 import com.v39a.omni.feature.video.domain.Video
+import com.v39a.omni.feature.video.domain.VideoEngineClient
 import com.v39a.omni.feature.video.domain.VideoRepository
 import com.v39a.omni.feature.video.domain.VideoStatus
 import com.v39a.omni.feature.video.domain.VideoStorage
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.slf4j.LoggerFactory
 import java.io.InputStream
 import java.util.UUID
 
@@ -22,7 +26,11 @@ data class UploadVideoCommand(
 class UploadVideoUseCase(
     private val videoRepository: VideoRepository,
     private val videoStorage: VideoStorage,
+    private val backgroundScope: CoroutineScope,
+    private val videoEngineClient: VideoEngineClient,
 ) {
+    val logger = LoggerFactory.getLogger(javaClass)
+
     suspend fun execute(command: UploadVideoCommand): Video = withContext(Dispatchers.IO) {
         val videoId = UUID.randomUUID()
 
@@ -47,6 +55,24 @@ class UploadVideoUseCase(
 
         videoRepository.create(video)
 
-        video
+        backgroundScope.launch {
+            try {
+                videoRepository.patchVideo(
+                    videoId,
+                    UpdateVideoMetadataCommand(status = VideoStatus.PROCESSING_MEDIA)
+                )
+
+                videoEngineClient.startProcessing(videoId, s3Path)
+
+            } catch (e: Exception) {
+                logger.info("Failed to process video $videoId: ${e.message}")
+                videoRepository.patchVideo(
+                    videoId,
+                    UpdateVideoMetadataCommand(status = VideoStatus.ERROR)
+                )
+            }
+        }
+
+        return@withContext video
     }
 }
