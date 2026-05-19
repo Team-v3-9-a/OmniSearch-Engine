@@ -206,15 +206,19 @@ components:
     AudioProcessRequest:
       required:
       - video_id
-      - audio_path
+      - object_key
       type: object
       properties:
         video_id:
           type: string
           format: uuid
-        audio_path:
+        bucket_name:
           type: string
-          description: "Путь в S3 к извлеченному аудиофайлу. Пример: media/{id}/audio.wav"
+          default: "video"
+          description: "Имя бакета в S3. По умолчанию 'video'."
+        object_key:
+          type: string
+          description: "Ключ объекта в S3. Пример: media/{id}/audio.wav"
 
     UpdateVideoRequest:
       type: object

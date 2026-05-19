@@ -10,12 +10,14 @@ import (
 	"os"
 	"path/filepath"
 
+	"omnisearch/video-engine/internal/ml"
 	"omnisearch/video-engine/internal/pipeline"
 	"omnisearch/video-engine/internal/s3"
 )
 
 type Server struct {
 	s3Client *s3.Client
+	mlClient *ml.Client
 	mux      *http.ServeMux
 }
 
@@ -28,6 +30,7 @@ func NewServer() (*Server, error) {
 	mux := http.NewServeMux()
 	s := &Server{
 		s3Client: s3Client,
+		mlClient: ml.NewClient(),
 		mux:      mux,
 	}
 
@@ -117,9 +120,18 @@ func (s *Server) processVideo(videoID, s3Path string) {
 		return
 	}
 
-	// 4. Отправляем успешный callback в Backend
-	log.Printf("Успешное завершение обработки видео %s", videoID)
+	// 4. Отправляем callback в Backend о начале ML-процессинга
+	log.Printf("Успешное завершение нарезки видео %s. Отправка callback...", videoID)
 	s.sendCallback(videoID, "PROCESSING_ML", duration)
+
+	// 5. Запускаем ML Engine (транскрибация и векторизация)
+	audioObjectKey := fmt.Sprintf("media/%s/audio.wav", videoID)
+	err = s.mlClient.TriggerProcess(ctx, videoID, audioObjectKey)
+	if err != nil {
+		log.Printf("Критическая ошибка: не удалось запустить ML Engine для видео %s: %v", videoID, err)
+		s.sendCallback(videoID, "ERROR", 0)
+		return
+	}
 }
 
 func (s *Server) sendCallback(videoID, status string, duration float64) {
