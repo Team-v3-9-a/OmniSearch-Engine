@@ -1,7 +1,7 @@
 package com.v39a.omni.feature.video.infrastructure
 
 import com.v39a.omni.core.util.nowUTC
-import com.v39a.omni.feature.video.domain.UpdateVideoMetadataCommand
+import com.v39a.omni.feature.video.domain.usecase.UpdateVideoMetadataCommand
 import com.v39a.omni.feature.video.domain.Video
 import com.v39a.omni.feature.video.domain.VideoRepository
 import com.v39a.omni.feature.video.domain.VideoStatus
@@ -42,7 +42,8 @@ class PostgresVideoRepository : VideoRepository {
 
     override suspend fun getById(id: UUID): Video? = withContext(Dispatchers.IO) {
         transaction {
-            VideoTable.select(column = Expression.build { VideoTable.id eq id })
+            VideoTable.selectAll()
+                .where { VideoTable.id eq id }
                 .mapNotNull { toDomainModel(it) }
                 .singleOrNull()
         }
@@ -68,7 +69,8 @@ class PostgresVideoRepository : VideoRepository {
             thumbnailPath = row[VideoTable.thumbnailPath],
             durationSeconds = row[VideoTable.durationSeconds],
             createdAt = row[VideoTable.createdAt],
-            status = VideoStatus.valueOf(row[VideoTable.status])
+            status = VideoStatus.valueOf(row[VideoTable.status]),
+            updatedAt = row[VideoTable.updatedAt],
         )
     }
 }

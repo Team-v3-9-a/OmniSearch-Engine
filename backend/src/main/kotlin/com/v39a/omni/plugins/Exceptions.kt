@@ -1,5 +1,6 @@
 package com.v39a.omni.plugins
 
+import com.v39a.omni.core.exceptions.VideoNotFoundException
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
@@ -26,6 +27,12 @@ fun Application.configureExceptions() {
             call.respond(
                 HttpStatusCode.InternalServerError,
                 mapOf("error" to "Something went wrong", "details" to cause.message)
+            )
+        }
+        exception<VideoNotFoundException> { call, cause ->
+            call.respond(
+                HttpStatusCode.NotFound,
+                mapOf("error" to cause.message)
             )
         }
     }

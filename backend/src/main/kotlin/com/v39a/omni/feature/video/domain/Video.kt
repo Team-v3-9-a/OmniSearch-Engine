@@ -9,6 +9,7 @@ data class Video(val id: UUID, val path: String, val status: VideoStatus?,
                  val durationSeconds: Int,
                  val thumbnailPath: String,
                  val createdAt: LocalDateTime,
+                 val updatedAt: LocalDateTime,
 )
 
 enum class VideoStatus {

@@ -1,4 +1,4 @@
-FROM pytorch/pytorch:2.11.0-cuda12.6-cudnn9-runtime
+FROM pytorch/pytorch:2.11.0-cuda12.8-cudnn9-runtime
 
 # ffmpeg + wget (нужен для healthcheck в docker-compose)
 RUN apt-get update && apt-get install -y --no-install-recommends \

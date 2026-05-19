@@ -1,5 +1,6 @@
 # Web
 fastapi>=0.135.0
+httpx>=0.28.0
 uvicorn[standard]>=0.40.0
 pydantic>=2.9.0
 asyncio
@@ -11,3 +12,6 @@ sentence-transformers>=5.0.0
 
 # Vector DB
 qdrant-client>=1.17.0
+
+# S3
+boto3>=1.35.0

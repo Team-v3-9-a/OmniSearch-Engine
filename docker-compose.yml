@@ -140,7 +140,6 @@ services:
       S3_SECRET_KEY: ${S3_SECRET_KEY}
       SHARED_MEDIA_PATH: /app/shared_media
       BACKEND_API_URL: http://backend:8080
-      ML_ENGINE_API_URL: http://ml-engine:8000
       INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
     volumes:
       - shared_media:/app/shared_media
