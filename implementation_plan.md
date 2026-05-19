@@ -137,14 +137,14 @@ Backend должен проксировать поисковые запросы 
 **Описание:** Формализовать JSON-контракты для всех inter-service вызовов: Backend → Video Engine, Video Engine → ML Engine, Video Engine → Backend (callback), Backend → ML Engine (search proxy).
 
 **AC:**
-- Документ/OpenAPI с контрактами для: `POST /process` (VE), `PUT /api/v1/videos/{id}/status` (Backend callback), `POST /api/v1/process` (ML), `POST /api/v1/search` (ML)
+- Документ/OpenAPI с контрактами для: `POST /process` (VE), `PATCH /internal/videos/{id}` (Backend callback), `POST /api/v1/process` (ML), `POST /api/v1/search` (ML)
 - Контракты согласованы со всеми участниками
 - Обновлён `docs/api/openapi.yaml`
 
 **Подзадачи:**
-- [ ] Описать JSON body для каждого inter-service эндпоинта
-- [ ] Провести ревью контрактов с командой
-- [ ] Обновить OpenAPI
+- [x] Описать JSON body для каждого inter-service эндпоинта
+- [x] Провести ревью контрактов с командой
+- [x] Обновить OpenAPI
 
 ---
 
