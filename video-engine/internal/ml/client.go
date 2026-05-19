@@ -36,15 +36,15 @@ func NewClient() *Client {
 
 type ProcessRequest struct {
 	VideoID   string `json:"video_id"`
-	AudioPath string `json:"audio_path"`
+	ObjectKey string `json:"object_key"`
 }
 
 // TriggerProcess отправляет запрос на транскрибацию и векторизацию аудиофайла с механизмом retry.
-func (c *Client) TriggerProcess(ctx context.Context, videoID, audioPath string) error {
+func (c *Client) TriggerProcess(ctx context.Context, videoID, objectKey string) error {
 	url := fmt.Sprintf("%s/api/v1/process", c.baseURL)
 	payload := ProcessRequest{
 		VideoID:   videoID,
-		AudioPath: audioPath,
+		ObjectKey: objectKey,
 	}
 
 	data, err := json.Marshal(payload)

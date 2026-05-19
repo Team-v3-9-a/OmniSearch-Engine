@@ -125,8 +125,8 @@ func (s *Server) processVideo(videoID, s3Path string) {
 	s.sendCallback(videoID, "PROCESSING_ML", duration)
 
 	// 5. Запускаем ML Engine (транскрибация и векторизация)
-	audioS3Path := fmt.Sprintf("media/%s/audio.wav", videoID)
-	err = s.mlClient.TriggerProcess(ctx, videoID, audioS3Path)
+	audioObjectKey := fmt.Sprintf("media/%s/audio.wav", videoID)
+	err = s.mlClient.TriggerProcess(ctx, videoID, audioObjectKey)
 	if err != nil {
 		log.Printf("Критическая ошибка: не удалось запустить ML Engine для видео %s: %v", videoID, err)
 		s.sendCallback(videoID, "ERROR", 0)
