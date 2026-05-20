@@ -19,7 +19,7 @@ fun Video.toResponseDTO(): VideoResponseDTO {
         title = this.title,
         status = this.status?.name ?: VideoStatus.ERROR.name,
         createdAt = this.createdAt.toString(),
-        updatedAt = this.updatedAt?.toString()
+        updatedAt = this.updatedAt.toString()
     )
 }
 
