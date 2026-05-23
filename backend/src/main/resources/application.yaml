@@ -20,3 +20,6 @@ minio:
 qdrant:
     host: ${QDRANT_HOST}
     port: 6333
+
+security:
+    internalSecret: ${INTERNAL_API_SECRET}

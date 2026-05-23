@@ -1,6 +1,7 @@
 package com.v39a.omni.feature.video.infrastructure
 
 import com.v39a.omni.core.util.nowUTC
+import com.v39a.omni.feature.video.domain.usecase.UpdateVideoMetadataCommand
 import com.v39a.omni.feature.video.domain.Video
 import com.v39a.omni.feature.video.domain.VideoRepository
 import com.v39a.omni.feature.video.domain.VideoStatus
@@ -8,7 +9,7 @@ import com.v39a.omni.feature.video.infrastructure.VideoTable.id
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.UUID
 
@@ -22,6 +23,10 @@ class PostgresVideoRepository : VideoRepository {
                 it[fileName] = video.path.substringAfterLast("/")
                 it[s3Path] = video.path
                 it[status] = video.status!!.name
+
+                it[title] = video.title
+                it[durationSeconds] = video.durationSeconds
+                it[thumbnailPath] = video.thumbnailPath
             }
         }
     }
@@ -30,16 +35,28 @@ class PostgresVideoRepository : VideoRepository {
         transaction {
             VideoTable.update({ VideoTable.id eq id }) {
                 it[status] = newStatus.name
-                it[updatedAt] = nowUTC() // Обновляем время при смене статуса
+                it[updatedAt] = nowUTC()
             }
         }
     }
 
     override suspend fun getById(id: UUID): Video? = withContext(Dispatchers.IO) {
         transaction {
-            VideoTable.select(column = Expression.build { VideoTable.id eq id })
+            VideoTable.selectAll()
+                .where { VideoTable.id eq id }
                 .mapNotNull { toDomainModel(it) }
                 .singleOrNull()
+        }
+    }
+
+    override suspend fun patchVideo(videoId: UUID, command: UpdateVideoMetadataCommand) {
+        newSuspendedTransaction(Dispatchers.IO) {
+            VideoTable.update({ VideoTable.id eq videoId }) { statement ->
+                command.status?.let { statement[status] = it.name }
+                command.durationSeconds?.let { statement[durationSeconds] = it.toInt() }
+                command.thumbnailPath?.let { statement[thumbnailPath] = it }
+                statement[updatedAt] = nowUTC()
+            }
         }
     }
 
@@ -48,7 +65,12 @@ class PostgresVideoRepository : VideoRepository {
         return Video(
             id = row[id],
             path = row[VideoTable.s3Path],
-            status = VideoStatus.valueOf(row[VideoTable.status])
+            title = row[VideoTable.title],
+            thumbnailPath = row[VideoTable.thumbnailPath],
+            durationSeconds = row[VideoTable.durationSeconds],
+            createdAt = row[VideoTable.createdAt],
+            status = VideoStatus.valueOf(row[VideoTable.status]),
+            updatedAt = row[VideoTable.updatedAt],
         )
     }
 }

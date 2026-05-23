@@ -1,0 +1,18 @@
+<svg width="314" height="314" viewBox="0 0 314 314" fill="none" xmlns="http://www.w3.org/2000/svg">
+<circle cx="157.5" cy="156.5" r="101.5" fill="url(#paint0_linear_2322_2)"/>
+<path d="M245.5 29.5C331.124 55.8542 137.278 140.688 28 176.998C82.1503 174.655 168.283 192.576 79.609 283C267.278 169.384 340.273 46.8352 245.5 29.5Z" fill="url(#paint1_linear_2322_2)" stroke="url(#paint2_linear_2322_2)" stroke-width="5" stroke-linejoin="round"/>
+<defs>
+<linearGradient id="paint0_linear_2322_2" x1="196.5" y1="84.5" x2="109.5" y2="212" gradientUnits="userSpaceOnUse">
+<stop stop-color="#62E6B6"/>
+<stop offset="1" stop-color="#3A45C1"/>
+</linearGradient>
+<linearGradient id="paint1_linear_2322_2" x1="271" y1="54.5" x2="109.5" y2="239" gradientUnits="userSpaceOnUse">
+<stop stop-color="#2587EF"/>
+<stop offset="1" stop-color="#A12BD0"/>
+</linearGradient>
+<linearGradient id="paint2_linear_2322_2" x1="271" y1="54.5" x2="109.5" y2="239" gradientUnits="userSpaceOnUse">
+<stop stop-color="#2587EF"/>
+<stop offset="1" stop-color="#A12BD0"/>
+</linearGradient>
+</defs>
+</svg>

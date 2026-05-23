@@ -1,18 +1,16 @@
 import styles from './Header.module.css'
-import Button from "../Button/Button.tsx";
-import DragAndDropZone from "@/components/DragAndDropZone/DragAndDropZone.tsx";
-
+import {ThemeSwitcher} from "@/components/ThemeSwitcher";
+import logo from '@/assets/Icons/Logo.svg'
+import {Link} from "react-router-dom";
 
 const Header = () => {
     return(
         <header className={styles.header}>
-            <div className={styles.containerLogo}>
-                <p className={styles.logoText}>OmniSearch</p>
-            </div>
-            <div className={styles.uploadContainer}>
-                <Button/>
-                <DragAndDropZone/>
-            </div>
+          <Link to="/" className={styles.containerLogo}>
+            <img className={styles.logo} src={logo} alt='logo'/>
+            <p className={styles.logoText}>NexusV</p>
+          </Link>
+          <ThemeSwitcher/>
         </header>
     )
 }

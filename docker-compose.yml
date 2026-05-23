@@ -1,22 +1,30 @@
 services:
-  # 1. Реляционная база данных (Postgres 15 Alpine)
+  # ---- 1. PostgreSQL ----
   postgres:
     image: postgres:15-alpine
-    container_name: video-sense-postgres
+    container_name: omnisearch-postgres
     restart: always
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: password123
-      POSTGRES_DB: videosense
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     ports:
       - "5432:5432"
     volumes:
       - ./postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - omnisearch-network
 
-  # 2. Объектное хранилище (MinIO)
+  # ---- 2. MinIO (S3) ----
   minio:
     image: minio/minio:latest
-    container_name: video-sense-minio
+    container_name: omnisearch-minio
     restart: always
     command: server /data --console-address ":9001"
     environment:
@@ -28,84 +36,163 @@ services:
     volumes:
       - ./minio_data:/data
       - shared_media:/app/shared_media
+    healthcheck:
+      # curl входит в minio/minio образ; /minio/health/live — официальный liveness-endpoint
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - omnisearch-network
 
-  # 3. Векторная база данных (Qdrant)
+  # ---- 3. Qdrant (Vector DB) ----
   qdrant:
     image: qdrant/qdrant:latest
-    container_name: video-sense-qdrant
+    container_name: omnisearch-qdrant
     restart: always
     ports:
       - "6333:6333"
     volumes:
       - ./qdrant_data:/qdrant/storage
-  
+    healthcheck:
+      # В образе Qdrant нет curl и wget, используем встроенную проверку открытого порта через bash
+      test: [ "CMD-SHELL", "bash -c 'cat < /dev/null > /dev/tcp/localhost/6333'" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - omnisearch-network
+
+  # ---- 4. Backend (Ktor) ----
   backend:
     build: ./backend
-    container_name: video-sense-backend
+    container_name: omnisearch-backend
+    restart: always
     ports:
       - "8080:8080"
     depends_on:
-      - postgres
-      - minio
-      - qdrant
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
     environment:
       DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
-      
       S3_ENDPOINT: http://minio:9000
       S3_ACCESS_KEY: ${S3_ACCESS_KEY}
       S3_SECRET_KEY: ${S3_SECRET_KEY}
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
       QDRANT_HOST: qdrant
       SHARED_MEDIA_PATH: /app/shared_media
     volumes:
       - shared_media:/app/shared_media
-  
+    healthcheck:
+      # В alpine нет bash, используем wget на существующий эндпоинт, чтобы не получать 404
+      test: [ "CMD-SHELL", "wget --spider -q http://localhost:8080/api/v1/videos/search || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - omnisearch-network
+
+  # ---- 5. Frontend (React + Nginx) ----
   frontend:
     build:
       context: ./frontend
       args:
         - VITE_SERVER_HOST=http://localhost:8080
-    container_name: video-sense-frontend
+    container_name: omnisearch-frontend
+    restart: always
     ports:
       - "3000:80"
     depends_on:
-      - backend
-  
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --spider -q http://localhost:80/ || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - omnisearch-network
+
+  # ---- 6. Video Engine (Go) ----
   video-engine:
     build: ./video-engine
-    container_name: video-sense-engine
+    container_name: omnisearch-video-engine
+    restart: always
+    ports:
+      - "8081:8081"
     depends_on:
-      - minio
+      minio:
+        condition: service_healthy
     environment:
+      PORT: 8081
       S3_ENDPOINT: http://minio:9000
       S3_ACCESS_KEY: ${S3_ACCESS_KEY}
       S3_SECRET_KEY: ${S3_SECRET_KEY}
       SHARED_MEDIA_PATH: /app/shared_media
+      BACKEND_API_URL: http://backend:8080
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
     volumes:
       - shared_media:/app/shared_media
-      
-  ml_engine:
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8081/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - omnisearch-network
+
+  # ---- 7. ML Engine (FastAPI + PyTorch) ----
+  ml-engine:
     build: ./ml-engine
-    container_name: video-sense-ml
+    container_name: omnisearch-ml-engine
     restart: always
     ports:
       - "8000:8000"
+    depends_on:
+      qdrant:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
     environment:
       QDRANT_HOST: qdrant
       QDRANT_PORT: 6333
       S3_ENDPOINT: http://minio:9000
       S3_ACCESS_KEY: ${S3_ACCESS_KEY}
       S3_SECRET_KEY: ${S3_SECRET_KEY}
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
     volumes:
       - ./model_cache:/models
-      - ./test_audio:/app/test_audio
-    depends_on:
-      - qdrant
+    healthcheck:
+      # wget устанавливается в ml-engine/Dockerfile; /health определён в app/main.py
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8000/health | grep -q 'ready' || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 300s
+    networks:
+      - omnisearch-network
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
               count: 1
-              capabilities: [gpu]
+              capabilities: [ gpu ]
+
+volumes:
+  shared_media:
+
+networks:
+  omnisearch-network:
+    driver: bridge

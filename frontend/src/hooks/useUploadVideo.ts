@@ -20,8 +20,8 @@ export const useUploadVideo = () => {
       const data = await uploadVideo(formData, (progress) => {
         updateProgress(localId, progress)
       })
-      updateStatus(localId, 'SUCCESS', data.id)
-      toast.success(`Видео ${file.name} загружено`)
+      updateStatus(localId, 'UPLOADED', data.id)
+      toast.success(`Видео ${file.name} загружено на сервер`)
     } catch (e) {
       updateStatus(localId, 'ERROR')
       toast.error(`Ошибка`)

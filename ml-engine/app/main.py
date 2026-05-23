@@ -2,7 +2,6 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 
 from app.api.v1.routes import router as v1_router
-from app.core.dependencies import ml_service_instance, qdrant_service_instance
 
 # Инициализация сервисов
 @asynccontextmanager

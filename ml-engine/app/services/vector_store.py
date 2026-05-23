@@ -1,8 +1,8 @@
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, VectorParams, PointStruct
+from typing import List
 import uuid
 import os
-import hashlib
 
 class QdrantService:
     def __init__(self, vector_size: int = 768):
@@ -20,20 +20,25 @@ class QdrantService:
                 vectors_config=VectorParams(size=self.vector_size, distance=Distance.COSINE),
             )
 
-    # Добавление эмбеддинга видео в Qdrant
-    def upsert_video_embedding(self, video_id: str, embedding: list, text: str, chunk_index: int = 0):
-        # Генерация детерминированного ID, чтобы избежать дубликатов при ретраях
-        unique_string = f"{video_id}_{chunk_index}"
-        point_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, unique_string))
-        point = PointStruct(
-            id=point_id,
-            vector=embedding,
-            payload={"video_id": video_id, "text": text}
-        )
-        self.client.upsert(
-            collection_name=self.collection_name,
-            points=[point]
-        )
+    def upsert_chunks(self, video_id: str, chunks: List[dict], vectors: List[list]) -> int:
+        points = [
+            PointStruct(
+                id=str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{video_id}_{i}")),
+                vector=vector,
+                payload={
+                    "video_id": video_id,
+                    "text": chunk["text"],
+                    "start_time": chunk["start_time"],
+                    "end_time": chunk["end_time"]
+                }
+            )
+            for i, (chunk, vector) in enumerate(zip(chunks, vectors))
+        ]
+
+        if points:
+            self.client.upsert(collection_name=self.collection_name, points=points)
+
+        return len(points)
 
     # Поиск видео по эмбеддингу
     def search(self, query_embedding: list, top_k: int = 5):

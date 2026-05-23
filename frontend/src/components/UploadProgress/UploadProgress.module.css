@@ -6,19 +6,46 @@
   position: fixed;
   bottom: 20px;
   right: 20px;
-  background-color: var(--white);
+  background-color: var(--header-color);
   padding: 12px;
   border-radius: 12px;
   border: 1px solid var(--separator-color);
   display: flex;
   flex-direction: column;
-  gap: 12px
+  gap: 12px;
+
+  width: 350px;
+  z-index: 1000;
+
+  transition: width 0.3s ease-in-out;
+}
+
+.uploadProgressCollapsed {
+  width: 140px;
+  gap: 0;
+}
+
+.hidden {
+  visibility: hidden;
+
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.downloadContainer {
+  display: flex;
+  justify-content: space-between;
 }
 
 .progressList {
   display: flex;
   flex-direction: column;
-  gap: 12px
+  gap: 12px;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .downloadTitle {
@@ -44,6 +71,11 @@
 
 .taskTitle {
   color: var(--text-secondary-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  min-width: 0;
 }
 
 .progress{
@@ -68,7 +100,8 @@
 
 .statusContainer {
   display: flex;
-  gap: 8px
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .UPLOADING {
@@ -81,4 +114,32 @@
 
 .ERROR {
   color: red
+}
+
+.closeBtn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: transparent;
+  border: solid 2px var(--separator-color);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+
+  color: var(--text-primary-color);
+}
+
+.collapseBtn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: transparent;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
 }
