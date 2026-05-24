@@ -1,25 +1,24 @@
 package com.v39a.omni.feature.video.api
 
+import com.v39a.omni.core.util.receiveVideoMultipart
+import com.v39a.omni.core.util.requireInternalSecret
+import com.v39a.omni.core.util.videoId
 import com.v39a.omni.feature.video.api.dto.StreamUrlResponse
 import com.v39a.omni.feature.video.api.dto.UpdateVideoRequest
 import com.v39a.omni.feature.video.api.dto.UploadResponse
-import com.v39a.omni.feature.video.api.dto.VideoResponse
 import com.v39a.omni.feature.video.api.dto.toResponseDTO
 import com.v39a.omni.feature.video.domain.usecase.UpdateVideoMetadataCommand
 import com.v39a.omni.feature.video.domain.usecase.UploadVideoCommand
 import com.v39a.omni.feature.video.domain.usecase.VideoUseCases
 import io.ktor.http.*
-import io.ktor.http.content.*
 import io.ktor.server.request.*
-import io.ktor.server.response.respond
+import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.utils.io.jvm.javaio.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.koin.ktor.ext.inject
-
 import org.slf4j.LoggerFactory
-import java.util.*
 
 fun Route.videoRoutes() {
     val videoUseCases by inject<VideoUseCases>()
@@ -27,7 +26,6 @@ fun Route.videoRoutes() {
 
     route("/api/v1") {
         route("/videos") {
-            // MOCK: GET /search
             // Принимает ?query=something
             get("/search") {
                 val query = call.request.queryParameters["query"] ?: ""
@@ -37,104 +35,54 @@ fun Route.videoRoutes() {
 
             // POST /upload
             post("/upload") {
-                //todo разобраться как его отключить или настроить иным образом, чтобы не было неявных лимитов
-                call.formFieldLimit = 500L * 1024 * 1024 * 1024
+                logger.info("Received file upload request")
 
-                val multipart = call.receiveMultipart()
-                var uploadResponse: UploadResponse? = null
-                logger.info("received file upload")
-                var title = ""
-                var durationSeconds = 0
-                var thumbnailPath = ""
-                var filePart: PartData.FileItem? = null
+                val parsedData = call.receiveVideoMultipart()
 
-                multipart.forEachPart { part ->
-                    when (part) {
-                        is PartData.FormItem -> {
-                            when (part.name) {
-                                "title" -> title = part.value
-                                "durationSeconds" -> durationSeconds = part.value.toIntOrNull() ?: 0
-                                "thumbnailPath" -> thumbnailPath = part.value
-                            }
-                            part.dispose()
-                        }
+                val fileName = parsedData.filePart.originalFileName ?: "unknown.mp4"
+                val contentType = parsedData.filePart.contentType?.toString() ?: "video/mp4"
 
-                        is PartData.FileItem -> {
-                            filePart = part
-                        }
-
-                        else -> {}
+                val video = withContext(Dispatchers.IO) {
+                    parsedData.filePart.provider().toInputStream().use { inputStream ->
+                        val command = UploadVideoCommand(
+                            fileName = fileName,
+                            contentType = contentType,
+                            title = parsedData.title,
+                            durationSeconds = parsedData.durationSeconds,
+                            thumbnailPath = parsedData.thumbnailPath,
+                            contentStream = inputStream
+                        )
+                        videoUseCases.upload.execute(command)
                     }
-                    if (part !is PartData.FileItem) part.dispose()
                 }
 
-                if (filePart != null) {
-                    val fileName = filePart.originalFileName ?: "unknown.mp4"
-                    val contentType = filePart.contentType?.toString() ?: "video/mp4"
+                parsedData.filePart.dispose()
 
-                    val video = withContext(Dispatchers.IO) {
-                        filePart.provider().toInputStream().use { inputStream ->
-                            val command = UploadVideoCommand(
-                                fileName = fileName,
-                                contentType = contentType,
-                                title = title,
-                                durationSeconds = durationSeconds,
-                                thumbnailPath = thumbnailPath,
-                                contentStream = inputStream,
-                            )
-                            videoUseCases.upload.execute(command)
-                        }
-                    }
-                    filePart.dispose()
-                    uploadResponse = UploadResponse(
-                        id = video.id.toString(),
-                        message = "Video uploaded successfully. Processing started."
-                    )
-
-                    call.respond(HttpStatusCode.Accepted, uploadResponse)
-                } else {
-                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to "No file found in the request"))
-                }
-
+                call.respond(
+                    HttpStatusCode.Accepted,
+                    UploadResponse(video.id.toString(), "Video uploaded successfully. Processing started.")
+                )
             }
 
             route("/{id}") {
-
                 get {
-                    val id = UUID.fromString(call.parameters["id"])
-
-                    val video = videoUseCases.getById(id)
-
+                    val video = videoUseCases.getById(call.videoId)
                     call.respond(HttpStatusCode.OK, video.toResponseDTO())
                 }
 
                 get("/stream") {
-                    val idParam = call.parameters["id"]
-                    val videoId = UUID.fromString(call.parameters["id"])
-
-                    val presignedUrl = videoUseCases.getStreamUrl(videoId)
-
+                    val presignedUrl = videoUseCases.getStreamUrl(call.videoId)
                     call.respond(HttpStatusCode.OK, StreamUrlResponse(url = presignedUrl))
                 }
             }
 
         }
 
-        route("/internal/videos") {
+        route("/api/v1/internal/videos") {
             patch("/{id}") {
-                val expectedSecret = call.application.environment.config.property("security.internalSecret").getString()
-                val providedSecret = call.request.header("X-Internal-Secret")
-
-                if (providedSecret != expectedSecret) {
-                    call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Access Denied: Internal API only"))
-                    return@patch
-                }
-
-                val idParam = call.parameters["id"]
-                val videoId = UUID.fromString(call.parameters["id"])
+                call.requireInternalSecret()
 
                 val request = call.receive<UpdateVideoRequest>()
-
                 if (request.status == null && request.durationSeconds == null && request.thumbnailPath == null) {
                     call.respond(HttpStatusCode.BadRequest, mapOf("error" to "No fields to update"))
                     return@patch
@@ -145,8 +93,7 @@ fun Route.videoRoutes() {
                     durationSeconds = request.durationSeconds,
                     thumbnailPath = request.thumbnailPath
                 )
-
-                videoUseCases.patchMetadata.execute(videoId, command)
+                videoUseCases.patchMetadata.execute(call.videoId, command)
 
                 call.respond(HttpStatusCode.OK, mapOf("message" to "Video updated successfully"))
             }
