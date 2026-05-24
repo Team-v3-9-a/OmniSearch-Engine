@@ -1,7 +1,7 @@
 package com.v39a.omni.feature.video.infrastructure
 
 import com.v39a.omni.core.util.nowUTC
-import com.v39a.omni.feature.video.domain.usecase.UpdateVideoMetadataCommand
+import com.v39a.omni.feature.video.domain.command.UpdateVideoMetadataCommand
 import com.v39a.omni.feature.video.domain.Video
 import com.v39a.omni.feature.video.domain.VideoRepository
 import com.v39a.omni.feature.video.domain.VideoStatus
@@ -18,11 +18,9 @@ class PostgresVideoRepository : VideoRepository {
         transaction {
             VideoTable.insert {
                 it[id] = video.id
-                    // todo здесь я беру название файла из пути. Нужно уточнить,
-                    //  нужно ли отдельное поле для названия, или этот вариант допустим
                 it[fileName] = video.path.substringAfterLast("/")
                 it[s3Path] = video.path
-                it[status] = video.status!!.name
+                it[status] = video.status?.name ?: VideoStatus.UPLOADED.name
 
                 it[title] = video.title
                 it[durationSeconds] = video.durationSeconds

@@ -15,7 +15,7 @@ import java.util.UUID
 
 class KtorHttpVideoClient(
     private val client: HttpClient
-) : VideoEngineClient {
+) : VideoEngineClient, AutoCloseable {
 
     private val baseUrl = System.getProperty("VIDEO_ENGINE_URL")
         ?: System.getenv("VIDEO_ENGINE_URL")
@@ -37,5 +37,9 @@ class KtorHttpVideoClient(
 
             throw Exception("Failed to start processing. Video Engine returned: ${response.status}")
         }
+    }
+
+    override fun close() {
+        client.close()
     }
 }

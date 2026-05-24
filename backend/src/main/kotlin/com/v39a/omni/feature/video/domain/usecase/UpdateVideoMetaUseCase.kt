@@ -1,6 +1,7 @@
 package com.v39a.omni.feature.video.domain.usecase
 
 import com.v39a.omni.feature.video.domain.VideoRepository
+import com.v39a.omni.feature.video.domain.command.UpdateVideoMetadataCommand
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.UUID

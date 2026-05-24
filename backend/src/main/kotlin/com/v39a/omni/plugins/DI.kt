@@ -84,7 +84,9 @@ fun Application.configureFrameworks() {
                     exponentialDelay()
                 }
             }
-        } onClose { it?.close() }
+        } onClose {
+            (it as? AutoCloseable)?.close()
+        }
 
         single<VideoEngineClient> {
             KtorHttpVideoClient(

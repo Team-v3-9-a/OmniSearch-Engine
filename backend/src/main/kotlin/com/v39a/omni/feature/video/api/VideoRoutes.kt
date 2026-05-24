@@ -7,7 +7,7 @@ import com.v39a.omni.feature.video.api.dto.StreamUrlResponse
 import com.v39a.omni.feature.video.api.dto.UpdateVideoRequest
 import com.v39a.omni.feature.video.api.dto.UploadResponse
 import com.v39a.omni.feature.video.api.dto.toResponseDTO
-import com.v39a.omni.feature.video.domain.usecase.UpdateVideoMetadataCommand
+import com.v39a.omni.feature.video.domain.command.UpdateVideoMetadataCommand
 import com.v39a.omni.feature.video.domain.usecase.UploadVideoCommand
 import com.v39a.omni.feature.video.domain.usecase.VideoUseCases
 import io.ktor.http.*

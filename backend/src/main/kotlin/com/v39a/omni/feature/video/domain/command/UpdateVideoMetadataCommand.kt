@@ -1,4 +1,4 @@
-package com.v39a.omni.feature.video.domain.usecase
+package com.v39a.omni.feature.video.domain.command
 
 import com.v39a.omni.feature.video.domain.VideoStatus
 
