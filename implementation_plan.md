@@ -85,8 +85,8 @@ flowchart LR
 - Путь `thumbnailPath` передаётся в callback к Backend
 
 **Подзадачи:**
-- [x] Копировать первый кадр как thumbnail в `UploadMedia()`
-- [x] Добавить `thumbnailPath` в callback payload
+- [ ] Копировать первый кадр как thumbnail в `UploadMedia()`
+- [ ] Добавить `thumbnailPath` в callback payload
 
 ---
 

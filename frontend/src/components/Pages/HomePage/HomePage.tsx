@@ -4,8 +4,6 @@ import Button from "@/components/Button/Button.tsx";
 import DragAndDropZone from "@/components/DragAndDropZone/DragAndDropZone.tsx";
 
 const HomePage = () => {
-
-
   return(
       <section className={styles.mainPage}>
         <div className={styles.searchContainer}>

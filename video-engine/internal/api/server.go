@@ -100,7 +100,7 @@ func (s *Server) processVideo(videoID, s3Path string) {
 	err := s.s3Client.DownloadVideo(ctx, s3Path, localVideoPath)
 	if err != nil {
 		log.Printf("Ошибка скачивания видео %s: %v", videoID, err)
-		s.sendCallback(videoID, "ERROR", 0, "")
+		s.sendCallback(videoID, "ERROR", 0)
 		return
 	}
 
@@ -108,33 +108,33 @@ func (s *Server) processVideo(videoID, s3Path string) {
 	duration, err := pipeline.Process(localVideoPath, outAudioPath, outFramesDir)
 	if err != nil {
 		log.Printf("Ошибка обработки видео %s: %v", videoID, err)
-		s.sendCallback(videoID, "ERROR", 0, "")
+		s.sendCallback(videoID, "ERROR", 0)
 		return
 	}
 
 	// 3. Загружаем результаты обратно в S3
-	thumbnailPath, err := s.s3Client.UploadMedia(ctx, videoID, outAudioPath, outFramesDir)
+	err = s.s3Client.UploadMedia(ctx, videoID, outAudioPath, outFramesDir)
 	if err != nil {
 		log.Printf("Ошибка загрузки результатов видео %s: %v", videoID, err)
-		s.sendCallback(videoID, "ERROR", 0, "")
+		s.sendCallback(videoID, "ERROR", 0)
 		return
 	}
 
 	// 4. Отправляем callback в Backend о начале ML-процессинга
 	log.Printf("Успешное завершение нарезки видео %s. Отправка callback...", videoID)
-	s.sendCallback(videoID, "PROCESSING_ML", duration, thumbnailPath)
+	s.sendCallback(videoID, "PROCESSING_ML", duration)
 
 	// 5. Запускаем ML Engine (транскрибация и векторизация)
 	audioObjectKey := fmt.Sprintf("media/%s/audio.wav", videoID)
 	err = s.mlClient.TriggerProcess(ctx, videoID, audioObjectKey)
 	if err != nil {
 		log.Printf("Критическая ошибка: не удалось запустить ML Engine для видео %s: %v", videoID, err)
-		s.sendCallback(videoID, "ERROR", 0, "")
+		s.sendCallback(videoID, "ERROR", 0)
 		return
 	}
 }
 
-func (s *Server) sendCallback(videoID, status string, duration float64, thumbnailPath string) {
+func (s *Server) sendCallback(videoID, status string, duration float64) {
 	// Для вызова бекенда мы берем URL бекенда. Т.к. video-engine запускается в docker, backend это http://backend:8080
 	// Для тестов можно через env.
 	apiURL := os.Getenv("BACKEND_API_URL")
@@ -149,9 +149,6 @@ func (s *Server) sendCallback(videoID, status string, duration float64, thumbnai
 	}
 	if duration > 0 {
 		payload["durationSeconds"] = int(duration)
-	}
-	if thumbnailPath != "" {
-		payload["thumbnailPath"] = thumbnailPath
 	}
 
 	data, err := json.Marshal(payload)

@@ -54,22 +54,20 @@ func (c *Client) DownloadVideo(ctx context.Context, s3Path, localPath string) er
 	return nil
 }
 
-func (c *Client) UploadMedia(ctx context.Context, videoID, localAudioPath, localFramesDir string) (string, error) {
+// UploadMedia загружает аудио и кадры обратно в S3
+func (c *Client) UploadMedia(ctx context.Context, videoID, localAudioPath, localFramesDir string) error {
 	log.Printf("[S3] Загрузка аудио %s...", localAudioPath)
 	audioS3Path := fmt.Sprintf("media/%s/audio.wav", videoID)
 	_, err := c.minioClient.FPutObject(ctx, c.bucket, audioS3Path, localAudioPath, minio.PutObjectOptions{ContentType: "audio/wav"})
 	if err != nil {
-		return "", fmt.Errorf("ошибка загрузки аудио: %v", err)
+		return fmt.Errorf("ошибка загрузки аудио: %v", err)
 	}
 
 	log.Printf("[S3] Загрузка кадров из %s...", localFramesDir)
 	files, err := os.ReadDir(localFramesDir)
 	if err != nil {
-		return "", fmt.Errorf("не удалось прочитать директорию кадров: %v", err)
+		return fmt.Errorf("не удалось прочитать директорию кадров: %v", err)
 	}
-
-	var thumbnailPath string
-	thumbnailUploaded := false
 
 	for _, file := range files {
 		if file.IsDir() {
@@ -82,19 +80,7 @@ func (c *Client) UploadMedia(ctx context.Context, videoID, localAudioPath, local
 		if err != nil {
 			log.Printf("[S3] Предупреждение: ошибка загрузки кадра %s: %v", file.Name(), err)
 		}
-
-		// Загружаем первый кадр как thumbnail
-		if !thumbnailUploaded && strings.HasSuffix(file.Name(), ".jpg") {
-			thumbS3Path := fmt.Sprintf("media/%s/thumbnail.jpg", videoID)
-			_, err := c.minioClient.FPutObject(ctx, c.bucket, thumbS3Path, localFilePath, minio.PutObjectOptions{ContentType: "image/jpeg"})
-			if err != nil {
-				log.Printf("[S3] Предупреждение: ошибка загрузки thumbnail %s: %v", file.Name(), err)
-			} else {
-				thumbnailPath = thumbS3Path
-				thumbnailUploaded = true
-			}
-		}
 	}
 
-	return thumbnailPath, nil
+	return nil
 }
