@@ -1,6 +1,6 @@
 package com.v39a.omni.feature.video.infrastructure
 
-import com.v39a.omni.feature.video.api.VideoEngineRequest
+import com.v39a.omni.feature.video.api.dto.VideoEngineRequest
 import com.v39a.omni.feature.video.domain.VideoEngineClient
 import io.ktor.client.HttpClient
 import io.ktor.client.request.post

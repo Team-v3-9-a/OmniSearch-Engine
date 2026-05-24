@@ -3,6 +3,7 @@ package com.v39a.omni.plugins
 import com.v39a.omni.feature.video.domain.VideoEngineClient
 import com.v39a.omni.feature.video.domain.VideoRepository
 import com.v39a.omni.feature.video.domain.VideoStorage
+import com.v39a.omni.feature.video.domain.usecase.GetVideoStreamUrlUseCase
 import com.v39a.omni.feature.video.domain.usecase.GetVideoUseCase
 import com.v39a.omni.feature.video.domain.usecase.UpdateVideoMetaUseCase
 import com.v39a.omni.feature.video.domain.usecase.UploadVideoUseCase
@@ -114,7 +115,14 @@ fun Application.configureFrameworks() {
             )
         }
 
-        single { VideoUseCases(get(), get(), get()) }
+        single {
+            GetVideoStreamUrlUseCase(
+                videoStorage = get(),
+                videoRepository = get(),
+            )
+        }
+
+        single { VideoUseCases(get(), get(), get(), get()) }
     }
 
     install(Koin) {

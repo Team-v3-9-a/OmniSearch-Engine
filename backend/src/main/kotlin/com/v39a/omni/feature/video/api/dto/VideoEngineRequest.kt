@@ -1,4 +1,4 @@
-package com.v39a.omni.feature.video.api
+package com.v39a.omni.feature.video.api.dto
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

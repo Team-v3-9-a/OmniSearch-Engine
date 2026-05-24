@@ -1,5 +1,10 @@
 package com.v39a.omni.feature.video.api
 
+import com.v39a.omni.feature.video.api.dto.StreamUrlResponse
+import com.v39a.omni.feature.video.api.dto.UpdateVideoRequest
+import com.v39a.omni.feature.video.api.dto.UploadResponse
+import com.v39a.omni.feature.video.api.dto.VideoResponse
+import com.v39a.omni.feature.video.api.dto.toResponseDTO
 import com.v39a.omni.feature.video.domain.usecase.UpdateVideoMetadataCommand
 import com.v39a.omni.feature.video.domain.usecase.UploadVideoCommand
 import com.v39a.omni.feature.video.domain.usecase.VideoUseCases
@@ -27,25 +32,7 @@ fun Route.videoRoutes() {
             get("/search") {
                 val query = call.request.queryParameters["query"] ?: ""
 
-                // Мок метаданных видео
-                val mockVideos = listOf(
-                    VideoResponse(
-                        id = UUID.randomUUID().toString(),
-                        title = "Video about $query",
-                        status = "READY",
-                        durationSeconds = 120,
-                        uploadDate = "2023-10-27T10:00:00Z"
-                    ),
-                    VideoResponse(
-                        id = UUID.randomUUID().toString(),
-                        title = "Another related video",
-                        status = "PROCESSING",
-                        durationSeconds = 45,
-                        uploadDate = "2023-10-27T10:05:00Z"
-                    )
-                )
-
-                call.respond(mockVideos)
+                call.respond("Coming Soon... Stay tuned!)")
             }
 
             // POST /upload
@@ -111,12 +98,24 @@ fun Route.videoRoutes() {
 
             }
 
-            get("/{id}") {
-                val id = UUID.fromString(call.parameters["id"])
+            route("/{id}") {
 
-                val video = videoUseCases.getById(id)
+                get {
+                    val id = UUID.fromString(call.parameters["id"])
 
-                call.respond(HttpStatusCode.OK, video.toResponseDTO())
+                    val video = videoUseCases.getById(id)
+
+                    call.respond(HttpStatusCode.OK, video.toResponseDTO())
+                }
+
+                get("/stream") {
+                    val idParam = call.parameters["id"]
+                    val videoId = UUID.fromString(call.parameters["id"])
+
+                    val presignedUrl = videoUseCases.getStreamUrl(videoId)
+
+                    call.respond(HttpStatusCode.OK, StreamUrlResponse(url = presignedUrl))
+                }
             }
 
         }
@@ -132,12 +131,7 @@ fun Route.videoRoutes() {
                 }
 
                 val idParam = call.parameters["id"]
-                val videoId = try { UUID.fromString(idParam) } catch (_: Exception) { null }
-
-                if (videoId == null) {
-                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid video UUID"))
-                    return@patch
-                }
+                val videoId = UUID.fromString(call.parameters["id"])
 
                 val request = call.receive<UpdateVideoRequest>()
 
