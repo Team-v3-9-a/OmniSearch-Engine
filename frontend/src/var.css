@@ -2,10 +2,10 @@
     --background-color: #edeef0;
     --header-color: #ffffff;
 
-    --accent-color: #0077FF;
+    --accent-color: #a070e8;
 
-    --button-color: #0077FF;
-    --button-hover-color: #186ccc;
+    --button-color: #a070e8;
+    --button-hover-color: #6944A1FF;
 
     --separator-color: #dce1e6;
 
@@ -21,10 +21,15 @@
     --background-color: #141414;
     --header-color: #222222;
 
-    --accent-color: #0077FF;
+    /*--accent-color: #0077FF;*/
 
-    --button-color: #0077FF;
-    --button-hover-color: #186ccc;
+    /*--button-color: #0077FF;*/
+    /*--button-hover-color: #186ccc;*/
+
+    --accent-color: #a070e8;
+
+    --button-color: #a070e8;
+    --button-hover-color: #6944a1;
 
     --separator-color: #363738;
 

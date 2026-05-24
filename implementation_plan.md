@@ -1,85 +1,60 @@
 # 🔍 OmniSearch Engine — MVP Development Plan
 
-**Дедлайн:** ~1 июня 2026 (6 недель от 19 апреля)  
-**Формат:** 3 спринта × 2 недели  
-**Текущая дата:** 19.04.2026
+**Дедлайн:** 2 июня 2026  
+**Текущая дата:** 19.05.2026  
+**Осталось:** ~2 недели (Final Sprint)  
+**Презентация проекта:** ~2 июня 2026
 
 ---
 
-## 📊 Анализ текущего состояния
+## 📊 Анализ текущего состояния (после Sprint 2)
 
-### Что сделано (Sprint 1 — "Foundation")
+### Что сделано
 
 | Сервис | Статус | Что реализовано |
 |--------|--------|-----------------|
-| **Backend (Ktor)** | 🟡 ~40% | Upload endpoint (`POST /upload`) → S3 (MinIO) + запись в PostgreSQL. Search endpoint — **мок** (возвращает хардкод). DI (Koin), CORS, Exceptions настроены. |
-| **Frontend (React)** | 🟡 ~30% | SPA-каркас (Vite + TS). Drag-and-Drop загрузка с progress bar (Zustand). Строка поиска — **заглушка** (toast). Нет страницы результатов поиска. |
-| **Video Engine (Go)** | 🟢 ~60% | CLI-утилита с параллельной обработкой. FFmpeg audio extraction + GoCV frame sampling (1 FPS). Pipeline processor (goroutines). Работает **только локально как CLI**, нет IPC с Backend. |
-| **ML Engine (Python)** | 🟢 ~65% | FastAPI сервис. Whisper large-v3 (INT8) транскрибация. E5-base эмбеддинги. Qdrant интеграция (upsert + search). Роуты `/process` и `/search`. |
-| **Infra (Docker)** | 🟡 ~50% | docker-compose с 7 сервисами. Dockerfile для каждого микросервиса. CI pipeline (GitHub Actions) — базовый (build/lint). Shared volume между Video Engine и MinIO. |
+| **Backend (Ktor)** | 🟢 ~65% | Upload → S3 + PostgreSQL. Статусная машина (`UPLOADED → PROCESSING_MEDIA → PROCESSING_ML → READY → ERROR`). `PATCH /internal/videos/{id}` — internal callback. `GET /videos/{id}` — получение видео по ID. `VideoEngineClient` — вызов Video Engine из upload pipeline. DI (Koin), CORS, `X-Internal-Secret` auth. **Search — всё ещё мок.** |
+| **Frontend (React)** | 🟡 ~45% | SPA-каркас (Vite + TS). React Router: `/`, `/search`, `/video/:id`. Drag-and-Drop загрузка + progress bar (Zustand). API polling статуса видео. **SearchResultsPage — заглушка. VideoPage — заглушка.** |
+| **Video Engine (Go)** | 🟢 ~80% | HTTP-микросервис на `:8081`. `POST /process`, `GET /health`. S3 download/upload (MinIO SDK). Параллельный pipeline (FFmpeg + GoCV). Callback к Backend. ML Engine trigger с retry (exponential backoff). **Docker build починен** (gocv/opencv:4.13.0). |
+| **ML Engine (Python)** | 🟢 ~70% | FastAPI. Whisper large-v3 транскрибация. E5-base эмбеддинги + Qdrant upsert/search. S3 download интегрирован (OMNI-61). `/process` и `/search` работают. **Нет callback к Backend (READY/ERROR).** |
+| **Infra (Docker)** | 🟢 ~75% | docker-compose с 7 сервисами + health checks + `depends_on`. CI pipeline обновлён. `.env.example`. Сеть `omnisearch-network`. |
 
 ---
 
-### 🔴 Критические разрывы (Blocker-ы для MVP)
+### Что осталось сделать для MVP
 
 ```mermaid
 flowchart LR
-    subgraph "❌ НЕ РАБОТАЕТ"
-        A["Backend → Video Engine<br/>Нет вызова Go-утилиты"] --> B["Video Engine → ML Engine<br/>Нет триггера /process"]
-        B --> C["ML Engine → Backend<br/>Нет callback статуса READY"]
-        C --> D["Backend → Frontend<br/>Search = мок, нет реальных данных"]
-    end
-    
     subgraph "✅ РАБОТАЕТ"
-        E["Frontend → Backend<br/>Upload multipart"] --> F["Backend → MinIO<br/>S3 storage"]
-        F --> G["Backend → PostgreSQL<br/>Video record + status"]
+        A["Frontend → Backend\nUpload multipart"] --> B["Backend → S3\nMinIO storage"]
+        B --> C["Backend → Video Engine\nPOST /process"]
+        C --> D["Video Engine\nFFmpeg + GoCV"]
+        D --> E["Video Engine → S3\nУпload артефактов"]
+        E --> F["Video Engine → Backend\nCallback PROCESSING_ML"]
+        F --> G["Video Engine → ML Engine\nPOST /api/v1/process"]
+    end
+
+    subgraph "❌ НЕ РАБОТАЕТ"
+        H["ML Engine → Backend\nCallback READY/ERROR"] 
+        I["Backend → ML Engine\nSearch proxy"]
+        J["Frontend\nSearch results + Video player"]
     end
 ```
 
 > [!CAUTION]
-> **Ingestion Pipeline полностью разорван.** Загруженное видео сохраняется в S3 и на этом всё. Нет ни единого шага, который инициирует обработку видео через Video Engine и ML Engine. Это главный блокер MVP.
+> **Ingestion Pipeline почти замкнут**, но ML Engine не отправляет callback `READY` к Backend → видео навсегда зависает в `PROCESSING_ML`. Это **блокер #1**.
 
 > [!WARNING]
-> **Retrieval Pipeline = Mock.** Эндпоинт `GET /search` возвращает хардкод. Нет реального взаимодействия Backend ↔ ML Engine ↔ Qdrant для поиска.
-
-> [!WARNING]
-> **Video Engine — dead container.** Dockerfile заканчивается `tail -f /dev/null`. Go-утилита работает только через CLI-флаги, нет HTTP API / gRPC / стандартного IPC для вызова из Backend.
+> **Retrieval Pipeline = Mock.** Backend `/search` возвращает хардкод. Нет проксирования к ML Engine. Frontend не отображает реальные результаты.
 
 ---
 
-## 🏗 Архитектурные решения для MVP
+## 📅 Final Sprint (19 мая → 2 июня): **"MVP Delivery"**
 
-### IPC-стратегия для Video Engine
+**Стратегия:** Все задачи разбиты по приоритетам. **P0** = без этого демо невозможно. **P1** = нужно для полноценного впечатления. **P2** = nice-to-have, делаем если останется время.
 
-> [!IMPORTANT]
-> **Рекомендация:** Преобразовать Video Engine из CLI-утилиты в **HTTP-микросервис** (Fiber/Chi/net-http). Backend вызывает `POST /process` → Video Engine скачивает видео из S3, нарезает, загружает артефакты в S3, и делает callback к Backend.
-> 
-> **Альтернатива (проще):** Backend вызывает Video Engine как **subprocess** через `shared_media` volume. Но это плохо масштабируется и усложняет error handling.
-
-### Статусная машина видео
-
-Текущие статусы: `UPLOADING`, `UPLOADED`, `FAILED`.  
-**Нужно расширить до:** `UPLOADED` → `PROCESSING_MEDIA` → `PROCESSING_ML` → `READY` → `ERROR`
-
-### Контракт поиска
-
-Backend должен проксировать поисковые запросы в ML Engine (`POST /api/v1/search`), получать `video_id` + `score` + `timestamp`, обогащать из PostgreSQL и отдавать на Frontend.
-
----
-
-## 📅 Sprint Plan
-
-### Sprint 2 (19 апреля → 3 мая): **"Integration & E2E Pipeline"**
-
-**Фокус:** Связать все сервисы в единый Ingestion Pipeline. После этого спринта загруженное видео должно пройти полный путь: Upload → Processing → READY.
-
-### Sprint 3 (3 мая → 17 мая): **"Search & Results"**
-
-**Фокус:** Реализовать полный Retrieval Pipeline. Frontend отображает реальные результаты поиска с метаданными и отрезками видео.
-
-### Sprint 4 (17 мая → 1 июня): **"Polish, Demo & Hardening"**
-
-**Фокус:** Стабилизация, UI/UX доработки, видеоплеер с таймкодами, error handling, демо-сценарий.
+### Неделя 1 (19–25 мая): Замкнуть пайплайн E2E
+### Неделя 2 (26 мая – 2 июня): Search UI + полировка + демо
 
 ---
 
@@ -91,114 +66,52 @@ Backend должен проксировать поисковые запросы 
 
 ---
 
-### Sprint 2
+### ✅ Завершённые задачи (Sprint 2)
 
-#### VE-1: Превращение Video Engine в HTTP-микросервис
-**Описание:** Преобразовать текущую CLI-утилиту в HTTP-сервис (net/http или fiber). Эндпоинт `POST /process` принимает `video_id` и `s3_path`, скачивает видео из MinIO, запускает pipeline (audio + frames), загружает результаты обратно в S3, и шлёт callback к Backend.
+- [x] **VE-1 (OMNI-65):** Video Engine → HTTP-микросервис (POST /process, GET /health, S3 download/upload, callback)
+- [x] **VE-2 (OMNI-86):** ML Engine trigger с exponential backoff retry
+- [x] **TL-1 (OMNI-90):** OpenAPI контракты для inter-service API
+
+---
+
+### P0 — Блокеры MVP
+
+#### VE-7: Thumbnail при нарезке (бывший VE-3, упрощённый)
+**Описание:** Сохранять первый кадр как thumbnail и загружать в S3. Без resize — просто первый frame как `thumbnail.jpg`.
 
 **AC:**
-- Video Engine запускается как long-running HTTP-сервер на порту `:8081`
-- `POST /process` принимает JSON `{"video_id": "uuid", "s3_path": "videos/file.mp4"}`
-- Видеофайл скачивается из MinIO (S3 SDK)
-- Audio extraction (FFmpeg) и frame sampling (GoCV) работают параллельно (существующий pipeline)
-- Результаты (`audio.wav`, `frames/*.jpg`) загружаются в MinIO в структуру `media/{video_id}/audio.wav` и `media/{video_id}/frames/`
-- По окончании — HTTP-callback к Backend `PUT /api/v1/videos/{id}/status` с телом `{"status": "PROCESSING_ML"}`
-- При ошибке — callback со статусом `ERROR`
-- Health check `GET /health` возвращает `200`
+- Первый сохранённый кадр копируется как `media/{video_id}/thumbnail.jpg`
+- Загрузка в S3 в рамках `UploadMedia()`
+- Путь `thumbnailPath` передаётся в callback к Backend
 
 **Подзадачи:**
-- [ ] Добавить S3 клиент (MinIO SDK для Go)
-- [ ] Реализовать download/upload из/в MinIO
-- [ ] Создать HTTP-эндпоинты (POST /process, GET /health)
-- [ ] Адаптировать pipeline.Process для работы с S3-путями
-- [ ] Реализовать callback к Backend
-- [ ] Обновить Dockerfile (убрать `tail -f`, добавить `CMD`)
-- [ ] Обновить docker-compose (порт, health check)
+- [x] Копировать первый кадр как thumbnail в `UploadMedia()`
+- [x] Добавить `thumbnailPath` в callback payload
 
 ---
 
-#### VE-2: Тригер ML Engine после нарезки
-**Описание:** После успешной загрузки артефактов в S3, Video Engine отправляет HTTP-запрос к ML Engine (`POST /api/v1/process`) с `video_id` и путём к аудиофайлу, чтобы запустить транскрибацию и векторизацию.
+### P1 — Важное
+
+#### VE-8: Graceful shutdown
+**Описание:** Корректное завершение при `SIGTERM` (Docker stop).
 
 **AC:**
-- После успешного upload артефактов в S3, Video Engine отправляет `POST http://ml_engine:8000/api/v1/process` с JSON `{"video_id": "uuid", "audio_path": "/путь-в-S3"}`
-- ML Engine возвращает `202 Accepted`
-- Если ML Engine недоступен — retry (3 попытки с exponential backoff)
-- Логирование каждого этапа
+- `SIGTERM`/`SIGINT` обрабатываются через `context.WithCancel`
+- HTTP-сервер делает `Shutdown(ctx)` с таймаутом 30 секунд
 
 **Подзадачи:**
-- [ ] HTTP-клиент для вызова ML Engine
-- [ ] Retry-логика
-- [ ] Интеграционный тест (curl/httpie)
+- [ ] Signal handling в `main.go`
+- [ ] `http.Server.Shutdown()` вместо голого `ListenAndServe`
 
 ---
 
-#### TL-1: Определить контракты API между сервисами
-**Описание:** Формализовать JSON-контракты для всех inter-service вызовов: Backend → Video Engine, Video Engine → ML Engine, Video Engine → Backend (callback), Backend → ML Engine (search proxy).
+### P2 — Nice-to-have
+
+#### VE-9: Метаданные видео в callback
+**Описание:** Отправлять `fps`, `resolution`, `frameCount` в callback к Backend.
 
 **AC:**
-- Документ/OpenAPI с контрактами для: `POST /process` (VE), `PUT /api/v1/videos/{id}/status` (Backend callback), `POST /api/v1/process` (ML), `POST /api/v1/search` (ML)
-- Контракты согласованы со всеми участниками
-- Обновлён `docs/api/openapi.yaml`
-
-**Подзадачи:**
-- [ ] Описать JSON body для каждого inter-service эндпоинта
-- [ ] Провести ревью контрактов с командой
-- [ ] Обновить OpenAPI
-
----
-
-### Sprint 3
-
-#### VE-3: Генерация thumbnail для результатов поиска
-**Описание:** При нарезке кадров сохранять **первый кадр** (или кадр на 1-й секунде) как thumbnail и загружать его в S3 по пути `media/{video_id}/thumbnail.jpg`.
-
-**AC:**
-- Thumbnail генерируется автоматически при обработке видео
-- Файл загружается в S3 по пути `media/{video_id}/thumbnail.jpg`
-- Thumbnail доступен для Frontend через S3 URL
-- Размер thumbnail: 320x180 (16:9, resize через GoCV)
-
-**Подзадачи:**
-- [ ] Добавить resize-логику в sampler.go
-- [ ] Загрузка thumbnail в S3
-- [ ] Тест на корректность формата и размера
-
----
-
-#### VE-4: Graceful shutdown и observability
-**Описание:** Добавить корректное завершение при `SIGTERM` (Docker stop), health check для docker-compose, и structured logging.
-
-**AC:**
-- `SIGTERM`/`SIGINT` обрабатываются, текущая задача завершается корректно
-- Health check в docker-compose: `healthcheck` → `GET /health`
-- Логи в формате JSON (slog или zerolog)
-
-**Подзадачи:**
-- [ ] Graceful shutdown (context cancellation)
-- [ ] Structured logging
-- [ ] docker-compose healthcheck
-
----
-
-### Sprint 4
-
-#### VE-5: Оптимизация: Multi-stage Dockerfile
-**Описание:** Переписать Dockerfile на multi-stage build для уменьшения размера образа.
-
-**AC:**
-- Первая stage: build Go бинарник
-- Вторая stage: runtime с FFmpeg + OpenCV (minimal)
-- Финальный образ < 500MB (по возможности)
-
----
-
-#### VE-6: Метаданные видео (длительность, FPS, разрешение)
-**Описание:** Извлекать базовые метаданные из видеофайла и отправлять их в callback к Backend.
-
-**AC:**
-- Callback содержит `duration_seconds`, `fps`, `resolution`, `frame_count`
-- Backend сохраняет метаданные в PostgreSQL
+- Callback содержит дополнительные поля из OpenAPI контракта
 
 ---
 
@@ -208,126 +121,74 @@ Backend должен проксировать поисковые запросы 
 
 ---
 
-### Sprint 2
+### ✅ Завершённые задачи (Sprint 2)
 
-#### BE-1: Статусная машина видео (расширение Video domain)
-**Описание:** Расширить `VideoStatus` enum до полной стейт-машины: `UPLOADED → PROCESSING_MEDIA → PROCESSING_ML → READY | ERROR`. Добавить эндпоинт для обновления статуса (internal callback от Video Engine).
-
-**AC:**
-- `VideoStatus`: `UPLOADED`, `PROCESSING_MEDIA`, `PROCESSING_ML`, `READY`, `ERROR`
-- `PUT /api/v1/videos/{id}/status` принимает `{"status": "PROCESSING_ML"}` — internal API, не для Frontend
-- `Video` domain model расширен: `title`, `durationSeconds`, `thumbnailPath`, `createdAt`
-- Статус обновляется транзакционно с `updatedAt`
-
-**Подзадачи:**
-- [ ] Расширить `VideoStatus` enum
-- [ ] Расширить `Video` domain model и `VideoTable`
-- [ ] Реализовать `PUT /api/v1/videos/{id}/status` endpoint
-- [ ] Обновить `VideoRepository` с новыми полями
+- [x] **BE-1:** Статусная машина видео (UPLOADED → PROCESSING_MEDIA → PROCESSING_ML → READY → ERROR)
+- [x] **BE-2 (OMNI-94):** VideoEngineClient + интеграция с upload pipeline
+- [x] **BE-3:** GET /api/v1/videos/{id}
+- [x] **OMNI-107:** ML Engine callback (PATCH /internal/videos/{id})
 
 ---
 
-#### BE-2: Оркестрация Ingestion Pipeline
-**Описание:** После успешного upload видео в S3, Backend асинхронно (coroutine) вызывает Video Engine (`POST http://video-engine:8081/process`), передавая `video_id` и `s3_path`, и обновляет статус на `PROCESSING_MEDIA`.
-
-**AC:**
-- После `uploadVideoUseCase.execute()` — запуск корутины для вызова Video Engine
-- HTTP-клиент (Ktor Client) отправляет `POST /process` к Video Engine
-- Статус видео обновляется: `UPLOADED → PROCESSING_MEDIA`
-- При недоступности Video Engine — статус `ERROR` + логирование
-- Upload endpoint продолжает возвращать `202 Accepted` моментально
-
-**Подзадачи:**
-- [ ] Добавить Ktor HTTP Client в зависимости
-- [ ] Создать `VideoEngineClient` (interface + impl)
-- [ ] Интегрировать вызов в `UploadVideoUseCase` (или отдельный UseCase)
-- [ ] Обработка ошибок (timeout, retry)
-
----
-
-#### BE-3: Эндпоинт получения статуса видео
-**Описание:** Реализовать `GET /api/v1/videos/{id}` для polling статуса видео с Frontend.
-
-**AC:**
-- `GET /api/v1/videos/{id}` возвращает `VideoResponse` с актуальным статусом
-- 404 если видео не найдено
-- Response содержит: `id`, `fileName`, `status`, `createdAt`, `updatedAt`
-
-**Подзадачи:**
-- [ ] Роут `GET /api/v1/videos/{id}`
-- [ ] Маппинг `Video → VideoResponse`
-- [ ] Обработка 404
-
----
-
-### Sprint 3
+### P0 — Блокеры MVP
 
 #### BE-4: Проксирование поиска через ML Engine
-**Описание:** Реализовать реальный `GET /api/v1/videos/search`. Backend принимает `?query=text`, проксирует запрос в ML Engine (`POST /api/v1/search`), получает `video_id` + `score` + `timestamps`, обогащает из PostgreSQL (title, thumbnail_url, status) и возвращает на Frontend.
+**Описание:** Реализовать реальный `GET /api/v1/videos/search`. Backend проксирует запрос в ML Engine (`POST /api/v1/search`), обогащает из PostgreSQL и возвращает на Frontend.
 
 **AC:**
-- `GET /api/v1/videos/search?query=...` → вызов ML Engine → обогащение из БД → response
-- Response: массив `SearchResultItem` с полями: `video_id`, `title`, `score`, `thumbnail_url`, `start_time`, `end_time`, `text_snippet`
+- `GET /api/v1/videos/search?query=...` → ML Engine → обогащение из БД → response
+- Response: массив `SearchResultItem` (`video_id`, `title`, `score`, `thumbnail_url`, `start_time`, `end_time`, `text_snippet`)
 - Фильтрация: только видео со статусом `READY`
-- Обработка ошибок: ML Engine недоступен → 503
+- ML Engine недоступен → 503
 
 **Подзадачи:**
-- [ ] Создать `MLEngineClient` (interface + impl)
-- [ ] Реализовать `SearchVideoUseCase`
-- [ ] Обогащение результатов из PostgreSQL
-- [ ] Обновить `VideoRoutes` — убрать мок, подключить реальный UseCase
-- [ ] Обработка ошибок
+- [ ] Создать `MLEngineClient` (Ktor HTTP Client)
+- [ ] `SearchVideoUseCase` с обогащением из PostgreSQL
+- [ ] Убрать мок из `VideoRoutes`, подключить реальный UseCase
+- [ ] Error handling (timeout, 503)
 
 ---
 
-#### BE-5: Эндпоинт получения списка загруженных видео
-**Описание:** `GET /api/v1/videos` — список всех видео с пагинацией для отображения на Frontend.
+#### BE-5: Presigned URL для стриминга видео
+**Описание:** Генерировать MinIO presigned URL для воспроизведения видео в браузере.
 
 **AC:**
-- `GET /api/v1/videos?page=0&size=20` возвращает список видео
-- Сортировка по `createdAt` DESC
-- Response содержит: массив `VideoResponse` + `totalCount`
-
-**Подзадачи:**
-- [ ] `findAll(page, size)` в `VideoRepository`
-- [ ] Роут `GET /api/v1/videos`
-- [ ] Пагинация
-
----
-
-#### BE-6: Presigned URL для стриминга видео
-**Описание:** Генерировать MinIO presigned URL для воспроизведения видео прямо в браузере (Frontend → MinIO напрямую).
-
-**AC:**
-- `GET /api/v1/videos/{id}/stream` возвращает `{"url": "http://minio:9000/signed-url..."}`
+- `GET /api/v1/videos/{id}/stream` возвращает `{"url": "http://...signed-url"}`
 - URL validen в течение 1 часа
-- Frontend использует URL для `<video src="...">`
 
 **Подзадачи:**
-- [ ] Добавить метод `getPresignedUrl()` в `VideoStorage`
-- [ ] Реализация через MinIO getPresignedObjectUrl
-- [ ] Роут
+- [ ] `getPresignedUrl()` в `VideoStorage`
+- [ ] Роут `GET /api/v1/videos/{id}/stream`
 
 ---
 
-### Sprint 4
+### P1 — Важное
 
-#### BE-7: GET /api/v1/videos/{id}/status — polling endpoint
-**Описание:** Лёгкий эндпоинт, возвращающий только статус видео для efficient polling с Frontend.
+#### BE-6: Список загруженных видео
+**Описание:** `GET /api/v1/videos` — список всех видео для отображения на Frontend.
 
 **AC:**
-- Возвращает: `{"status": "PROCESSING_ML", "updated_at": "..."}`
-- Оптимизирован для частого вызова
+- `GET /api/v1/videos` возвращает массив `VideoResponse`
+- Сортировка по `createdAt` DESC
+
+**Подзадачи:**
+- [ ] `findAll()` в `VideoRepository`
+- [ ] Роут `GET /api/v1/videos`
 
 ---
 
-#### BE-8: Удаление mock-ов и seed data
-**Описание:** Удалить все моковые данные и заглушки из Database.kt и VideoRoutes.kt.
+#### BE-7: Удаление мок-данных
+**Описание:** Удалить mock search endpoint из `VideoRoutes.kt`.
 
 **AC:**
-- Mock search endpoint удалён
-- Seed data из `configureDatabase()` удалён или вынесен в dev-профиль
-- Все эндпоинты работают с реальными данными
+- Mock `/search` заменён реальной реализацией (BE-4)
+
+---
+
+### P2 — Nice-to-have
+
+#### BE-8: Сохранение расширенных метаданных (fps, resolution)
+**Описание:** Принимать и сохранять дополнительные поля из callback Video Engine.
 
 ---
 
@@ -337,120 +198,70 @@ Backend должен проксировать поисковые запросы 
 
 ---
 
-### Sprint 2
+### ✅ Завершённые задачи (Sprint 2)
 
-#### FE-1: Routing и страничная навигация
-**Описание:** Добавить React Router. Разбить SPA на страницы: Главная (поиск + загрузка), Результаты поиска, Просмотр видео.
-
-**AC:**
-- `react-router-dom` установлен и настроен
-- Роуты: `/` (главная), `/search?query=...` (результаты), `/video/:id` (просмотр)
-- Header содержит навигацию между страницами
-- 404-страница
-
-**Подзадачи:**
-- [ ] Установить react-router-dom
-- [ ] Создать Layout компонент
-- [ ] Настроить Routes в App.tsx
-- [ ] Обновить Header с навигацией
+- [x] **FE-1:** React Router (/, /search, /video/:id, 404)
+- [x] **FE-2 (OMNI-103):** API polling статуса видео после загрузки
 
 ---
 
-#### FE-2: API-слой для polling статуса видео
-**Описание:** Реализовать API-функции для получения статуса видео и запуска периодического polling после загрузки.
-
-**AC:**
-- `getVideoStatus(videoId)` — вызов `GET /api/v1/videos/{id}`
-- Polling каждые 3 секунды после успешной загрузки, пока статус ≠ `READY` или `ERROR`
-- UploadProgress отображает текущий шаг обработки: "Загружено → Обработка видео → AI анализ → Готово"
-- Polling останавливается при закрытии страницы
-
-**Подзадачи:**
-- [ ] API функция `getVideoStatus()`
-- [ ] usePolling hook
-- [ ] Обновить UploadProgress с визуальными шагами
-
----
-
-### Sprint 3
+### P0 — Блокеры MVP
 
 #### FE-3: Страница результатов поиска
-**Описание:** Реализовать полноценную страницу результатов поиска, отображающую карточки видео с thumbnail, заголовком, score и текстовым сниппетом.
+**Описание:** Полноценная страница `/search?query=...` с карточками видео.
 
 **AC:**
-- При отправке запроса из строки поиска → навигация на `/search?query=...`
-- `GET /api/v1/videos/search?query=...` вызывается при маунте страницы
-- Результаты отображаются карточками (grid/list layout)
-- Каждая карточка: thumbnail, title, relevance score (%), text snippet, link to `/video/:id`
-- Загрузочное состояние (skeleton loader)
-- Пустое состояние ("Ничего не найдено")
-- Анимации появления карточек
+- При submit поисковой строки → навигация на `/search?query=...`
+- Вызов `GET /api/v1/videos/search?query=...`
+- Карточки результатов: thumbnail, title, score (%), text snippet
+- Клик по карточке → `/video/:id?t=start_time`
+- Skeleton loader + пустое состояние ("Ничего не найдено")
 
 **Подзадачи:**
 - [ ] API функция `searchVideos(query)`
-- [ ] Компонент `SearchResultsPage`
+- [ ] Компонент `SearchResultsPage` (реальная реализация)
 - [ ] Компонент `VideoCard`
-- [ ] Skeleton loader
-- [ ] Пустое состояние
-- [ ] Стилизация (CSS Modules)
+- [ ] Loading/empty states
+- [ ] Подключить Search компонент к навигации
 
 ---
 
 #### FE-4: Страница просмотра видео
-**Описание:** Страница `/video/:id` с видеоплеером, метаданными и фрагментом транскрипции.
+**Описание:** Страница `/video/:id` с видеоплеером и метаданными.
 
 **AC:**
 - HTML5 `<video>` плеер с presigned URL от Backend
-- Метаданные: title, upload date, duration
-- При переходе из поиска — автоматическая перемотка к `start_time` из результата
-- Текстовый фрагмент (snippet) из результата поиска отображается под плеером
+- Метаданные: title, duration, upload date
+- При переходе из поиска — перемотка к `start_time` из query param
+- Текстовый snippet под плеером
 
 **Подзадачи:**
-- [ ] API функция `getVideoStream(videoId)`
-- [ ] Компонент `VideoPlayerPage`
-- [ ] Видеоплеер с поддержкой таймкодов
-- [ ] Отображение метаданных
+- [ ] API функция `getVideoStream(videoId)` → presigned URL
+- [ ] Компонент `VideoPlayerPage` (реальная реализация)
+- [ ] Поддержка `?t=seconds` для перемотки
 
 ---
 
-#### FE-5: Интеграция Search с реальным API
-**Описание:** Подключить строку поиска к реальному Backend API вместо toast-заглушки.
+### P1 — Важное
+
+#### FE-5: Страница "Мои видео"
+**Описание:** Список загруженных видео с текущими статусами.
 
 **AC:**
-- При submit формы — навигация на `/search?query=...`
-- Loading state на кнопке поиска
-- Debounce на ввод (300ms) если будет autocomplete
-- Обработка ошибок (API недоступен)
+- Роут `/my-videos` или секция на главной
+- Карточки с визуальным отображением статуса (UPLOADED/PROCESSING/READY/ERROR)
+- Вызов `GET /api/v1/videos`
 
 **Подзадачи:**
-- [ ] Обновить `Search` компонент
-- [ ] Навигация через `useNavigate`
-- [ ] Error handling
+- [ ] API функция `getMyVideos()`
+- [ ] Компонент с карточками + статус-бейджами
 
 ---
 
-### Sprint 4
+### P2 — Nice-to-have
 
 #### FE-6: UI полировка и анимации
-**Описание:** Добавить анимации переходов между страницами, hover-эффекты на карточках, тему (dark mode support).
-
-**AC:**
-- Framer Motion для анимаций перехода страниц
-- Hover-эффекты на карточках результатов
-- Загрузочные скелетоны
-- Responsive layout (mobile-friendly)
-- Консистентная цветовая палитра
-
----
-
-#### FE-7: Страница "Мои видео" (загруженные)
-**Описание:** Отображение списка всех загруженных видео с их текущими статусами.
-
-**AC:**
-- Роут `/my-videos`
-- Список с карточками загруженных видео
-- Статус каждого видео визуально различим (UPLOADED/PROCESSING/READY/ERROR)
-- Кнопка "удалить" (если время позволит)
+**Описание:** Framer Motion, hover-эффекты, responsive layout.
 
 ---
 
@@ -460,238 +271,138 @@ Backend должен проксировать поисковые запросы 
 
 ---
 
-### Sprint 2
+### ✅ Завершённые задачи (Sprint 2)
 
-#### ML-1: Адаптация /process для работы с S3
-**Описание:** Сейчас `/process` принимает локальный `audio_path`. Нужно, чтобы ML Engine скачивал аудио из S3 (MinIO) перед транскрибацией.
-
-**AC:**
-- `AudioProcessRequest` принимает `video_id` и `s3_audio_path` (напр. `media/{video_id}/audio.wav`)
-- ML Engine скачивает файл из MinIO через boto3/minio-py
-- Файл сохраняется во временную директорию, обрабатывается, удаляется
-- При ошибке скачивания — HTTP 500 с описанием
-
-**Подзадачи:**
-- [ ] Добавить `boto3` или `minio` в requirements.txt
-- [ ] Реализовать `S3Service` (download file from MinIO)
-- [ ] Обновить `process_audio_task` для работы с S3
-- [ ] Cleanup временных файлов
+- [x] **ML-1 (OMNI-61):** S3 download для аудио (S3Service)
+- [x] **ML-3:** start_time/end_time в Qdrant payload
 
 ---
 
+### P0 — Блокеры MVP
+
 #### ML-2: Callback к Backend после завершения обработки
-**Описание:** После успешной обработки аудио и сохранения векторов в Qdrant, ML Engine отправляет callback к Backend для обновления статуса: `PROCESSING_ML → READY`.
+**Описание:** После обработки аудио и upsert в Qdrant — отправить callback к Backend для обновления статуса: `PROCESSING_ML → READY`.
 
 **AC:**
-- HTTP `PUT http://backend:8080/api/v1/videos/{video_id}/status` с `{"status": "READY"}`
-- При ошибке обработки — callback с `{"status": "ERROR", "error": "..."}`
+- HTTP `PATCH http://backend:8080/api/v1/internal/videos/{video_id}` с `{"status": "READY"}`
+- При ошибке обработки → callback с `{"status": "ERROR"}`
+- Заголовок `X-Internal-Secret` из env
 - Retry при недоступности Backend (3 попытки)
 
 **Подзадачи:**
 - [ ] HTTP-клиент (httpx) для callback
-- [ ] Интеграция в `process_audio_task`
+- [ ] Интеграция в `process_audio_task` (после upsert в Qdrant)
 - [ ] Error handling и retry
 
 ---
 
-#### ML-3: Сохранение start_time/end_time в Qdrant payload
-**Описание:** Убедиться, что при upsert в Qdrant payload содержит `start_time` и `end_time` для каждого чанка — это нужно для отображения таймкодов в результатах поиска.
+#### ML-4: Обогащение ответа /search
+**Описание:** Response `/search` должен содержать достаточно данных для Backend.
 
 **AC:**
-- Qdrant payload включает: `video_id`, `text`, `start_time`, `end_time`, `chunk_index`
-- При поиске — payload возвращается полностью
-- Верифицировать через Qdrant Dashboard
-
-**Подзадачи:**
-- [ ] Проверить текущую реализацию (уже частично есть в routes.py)
-- [ ] Добавить `chunk_index` в payload
-- [ ] Тест: загрузить аудио → найти в Qdrant → проверить таймкоды
-
----
-
-### Sprint 3
-
-#### ML-4: Эндпоинт /search — обогащение ответа
-**Описание:** Обогатить ответ `/search` дополнительными полями, чтобы Backend мог формировать полноценный `SearchResultItem`.
-
-**AC:**
-- Response `/search`: `[{video_id, score, text_snippet, start_time, end_time, chunk_index}]`
-- Дедупликация: если несколько чанков одного видео релевантны — группировать, возвращать лучший score
+- Response: `[{video_id, score, text_snippet, start_time, end_time}]`
+- Дедупликация: если несколько чанков одного видео — вернуть лучший score
 - `top_k` по умолчанию = 10
 
 **Подзадачи:**
 - [ ] Обновить `SearchResponse` schema
 - [ ] Дедупликация по `video_id`
-- [ ] Тест с реальными данными
 
 ---
+
+### P2 — Nice-to-have
 
 #### ML-5: Vision Embeddings (CLIP) для кадров
-**Описание:** **(Nice-to-have для MVP)** Добавить обработку кадров через CLIP-модель: скачивание frames из S3, генерация vision-эмбеддингов, upsert в отдельную Qdrant коллекцию `image_collection`.
+**Описание:** Обработка кадров через CLIP для мультимодального поиска.
+
+> [!NOTE]
+> Эта задача **не входит в MVP**. Делается только если все P0 и P1 закрыты.
+
+---
+
+#### ML-6: Оптимизация моделей
+**Описание:** Lazy loading, caching, memory profiling.
+
+---
+
+---
+
+## 🐳 DevOps / Infra — *тимлид*
+
+---
+
+### ✅ Завершённые задачи (Sprint 2)
+
+- [x] **INF-1:** `.env.example`, docker-compose health checks, depends_on
+- [x] **INF-2:** CI pipeline обновлён
+
+---
+
+### P1 — Важное
+
+#### INF-3: MinIO public access для thumbnails
+**Описание:** Настроить bucket policy для доступа к thumbnails без авторизации.
 
 **AC:**
-- `POST /process` также обрабатывает frames (если переданы)
-- Кадры скачиваются из S3
-- CLIP model генерирует эмбеддинги
-- Эмбеддинги сохраняются в `image_collection` с payload: `video_id`, `frame_path`, `timestamp`
-- Поиск по изображениям интегрирован в `/search` (multi-modal)
-
-**Подзадачи:**
-- [ ] Добавить CLIP модель (openai/clip-vit-base-patch32)
-- [ ] Vision embedding pipeline
-- [ ] Новая Qdrant коллекция `image_collection`
-- [ ] Обновить `/search` для multi-modal поиска
+- Bucket policy: public-read для `media/*/thumbnail.jpg`
+- Frontend загружает thumbnails по прямому URL
 
 ---
 
-### Sprint 4
+### P2 — Nice-to-have
 
-#### ML-6: Оптимизация моделей для production
-**Описание:** Оптимизировать загрузку моделей: lazy loading, model caching, memory profiling.
-
-**AC:**
-- Health check показывает загруженность моделей
-- Whisper загружается при первом запросе (lazy) или при старте (eager, configurable)
-- Memory usage < 3GB
-- Логирование инференс-времени для каждого запроса
-
----
-
----
-
-## 🐳 DevOps / Infra — *участник DevOps или тимлид*
-
----
-
-### Sprint 2
-
-#### INF-1: Настроить .env файл и docker-compose для полного E2E запуска
-**Описание:** Создать единый `.env.example` с описанием переменных. Обновить docker-compose для корректного запуска всех 7 сервисов с health checks и depends_on + condition.
-
-**AC:**
-- `.env.example` с комментариями
-- `docker-compose up` поднимает все сервисы без ошибок
-- Health checks для: postgres, minio, qdrant, backend, video-engine, ml-engine
-- `depends_on` с `condition: service_healthy`
-- Сеть `omnisearch-network` для всех сервисов
-- `volumes` корректно маппятся
-
-**Подзадачи:**
-- [ ] Создать `.env.example`
-- [ ] Добавить health checks в docker-compose
-- [ ] Настроить `depends_on` с conditions
-- [ ] Проверить запуск `docker-compose up --build`
-
----
-
-#### INF-2: Обновить CI pipeline
-**Описание:** Обновить GitHub Actions: реальная сборка фронтенда, Go build (без OpenCV для CI), линтинг всех сервисов.
-
-**AC:**
-- Frontend: `npm install && npm run build`
-- Backend: `./gradlew buildFatJar`
-- Video Engine: `go build ./...` (mock CGO или skip на CI)
-- ML Engine: `ruff check` + `pip install` (verify deps)
-- Все проверки проходят на каждый PR
-
-**Подзадачи:**
-- [ ] Обновить check-frontend job
-- [ ] Обновить check-cpp-engine → check-go-engine
-- [ ] Добавить env variables для CI
-
----
-
-### Sprint 3
-
-#### INF-3: Настройка MinIO public access для thumbnails
-**Описание:** Настроить MinIO bucket policy, чтобы thumbnails были доступны по прямым URL без авторизации (для Frontend).
-
-**AC:**
-- Bucket `media` с policy: `public-read` для `media/*/thumbnail.jpg`
-- Frontend может загружать thumbnails по прямому URL
-- Основные видеофайлы остаются приватными
-
----
-
-### Sprint 4
-
-#### INF-4: Multi-stage Dockerfile для всех сервисов
-**Описание:** Оптимизировать все Dockerfile для уменьшения размера образов.
-
-**AC:**
-- Backend: уже multi-stage ✅
-- Frontend: уже multi-stage ✅  
-- Video Engine: multi-stage (build Go binary → runtime)
-- ML Engine: оптимизация слоёв, cache mount для pip
-
----
-
+#### INF-4: Multi-stage Dockerfiles
 #### INF-5: Docker-compose profiles (dev/prod)
-**Описание:** Разделить docker-compose на профили: `dev` (с hot-reload, dev tools) и `prod` (оптимизированные образы).
-
-**AC:**
-- `docker compose --profile dev up` — с volume mounts для hot-reload
-- `docker compose --profile prod up` — production-ready
 
 ---
 
 ---
 
-## 📊 Roadmap визуализация
+## 📊 Roadmap — Final Sprint
 
 ```mermaid
 gantt
-    title OmniSearch MVP — 6 недель
+    title OmniSearch MVP — Final Sprint (2 недели)
     dateFormat  YYYY-MM-DD
     
-    section Sprint 2 - Integration
-    API Contracts (TL)           :a1, 2026-04-19, 3d
-    Video Engine HTTP (VE-1)     :a2, 2026-04-19, 10d
-    VE → ML Trigger (VE-2)      :a3, after a2, 3d
-    Status Machine (BE-1)        :a4, 2026-04-19, 5d
-    Backend → VE Call (BE-2)     :a5, after a4, 5d
-    Video Status API (BE-3)      :a6, after a4, 3d
-    ML S3 Download (ML-1)        :a7, 2026-04-19, 5d
-    ML Callback (ML-2)           :a8, after a7, 4d
-    Frontend Routing (FE-1)      :a9, 2026-04-19, 5d
-    Polling Status (FE-2)        :a10, after a9, 5d
-    Docker .env (INF-1)          :a11, 2026-04-19, 3d
+    section Неделя 1 — E2E Pipeline
+    ML Callback READY (ML-2) [P0]     :a1, 2026-05-19, 4d
+    ML Search обогащение (ML-4) [P0]  :a2, after a1, 3d
+    BE Search Proxy (BE-4) [P0]       :a3, 2026-05-19, 5d
+    BE Presigned URL (BE-5) [P0]      :a4, after a3, 3d
+    VE Thumbnail (VE-7) [P0]          :a5, 2026-05-19, 2d
+    VE Graceful shutdown (VE-8) [P1]  :a6, after a5, 2d
 
-    section Sprint 3 - Search
-    Search Proxy (BE-4)          :b1, 2026-05-03, 7d
-    Video List API (BE-5)        :b2, 2026-05-03, 4d
-    Presigned URLs (BE-6)        :b3, after b2, 4d
-    Search Results Page (FE-3)   :b4, 2026-05-03, 7d
-    Video Player Page (FE-4)     :b5, after b4, 5d
-    Search Integration (FE-5)    :b6, 2026-05-03, 3d
-    ML Search Response (ML-4)    :b7, 2026-05-03, 5d
-    CLIP Vision (ML-5)           :b8, after b7, 7d
-    Thumbnail Gen (VE-3)         :b9, 2026-05-03, 5d
-    Observability (VE-4)         :b10, after b9, 4d
-
-    section Sprint 4 - Polish
-    UI Animations (FE-6)         :c1, 2026-05-17, 7d
-    My Videos Page (FE-7)        :c2, after c1, 5d
-    ML Optimization (ML-6)       :c3, 2026-05-17, 5d
-    Multi-stage Docker (VE-5)    :c4, 2026-05-17, 3d
-    Video Metadata (VE-6)        :c5, after c4, 4d
-    Remove Mocks (BE-8)          :c6, 2026-05-17, 2d
-    Docker Profiles (INF-5)      :c7, 2026-05-17, 3d
-    Demo Prep                    :c8, 2026-05-28, 4d
+    section Неделя 2 — Search UI + Polish
+    FE Search Results (FE-3) [P0]     :b1, 2026-05-26, 5d
+    FE Video Player (FE-4) [P0]       :b2, 2026-05-26, 4d
+    BE Video List (BE-6) [P1]         :b3, 2026-05-26, 3d
+    FE My Videos (FE-5) [P1]          :b4, after b3, 3d
+    BE Remove Mocks (BE-7) [P1]       :b5, 2026-05-26, 1d
+    INF Thumbnails access (INF-3)[P1] :b6, 2026-05-26, 2d
+    Demo Prep                         :b7, 2026-05-31, 2d
 ```
 
 ---
 
-## 🔑 Рекомендации по процессу
-
-1. **Канбан-доска:** Youtrack / GitHub Projects. Статусы: `TODO → In Progress → Review → Done`
-2. **Daily sync:** 15 мин стендап (текст в Telegram/Discord) — что сделал, что планирую, какие блокеры
-3. **Weekly demo:** Каждую пятницу — 30 мин демо текущего прогресса
-4. **Branch strategy:** `feature/OMNI-XX-description` → PR в `main`. Минимум 1 reviewer.
-5. **Приоритет Sprint 2:** Все силы на интеграцию. **VE-1 + BE-2 + ML-1** — это "золотой путь". Пока он не работает, ничего другого не имеет смысла.
+## 🎯 KPI для Final Sprint
 
 > [!IMPORTANT]
-> **Главный KPI для Sprint 2:** `docker-compose up` → загрузить видео через UI → дождаться статуса `READY` → это значит Ingestion Pipeline работает E2E.
+> **KPI Неделя 1 (к 25 мая):** `docker-compose up` → загрузить видео → дождаться статуса `READY` → **Ingestion Pipeline работает E2E от начала до конца.**
 
 > [!IMPORTANT]
-> **Главный KPI для Sprint 3:** Ввести текстовый запрос → получить карточки видео с реальными результатами → кликнуть → воспроизвести видео с нужного момента.
+> **KPI Неделя 2 (к 1 июня):** Ввести текстовый запрос → получить карточки с реальными результатами → кликнуть → воспроизвести видео с нужного момента → **Retrieval Pipeline работает E2E.**
+
+> [!CAUTION]
+> **Правило 2 недель:** Если задача не помечена P0, она НЕ блокирует демо. P2 задачи делаются ТОЛЬКО после закрытия всех P0 и P1. Никаких "я начну CLIP пока жду ревью" — сначала замыкаем основной путь.
+
+---
+
+## 🔑 Рекомендации
+
+1. **Daily sync:** 15 мин стендап — что сделал, что планирую, какие блокеры
+2. **Branch strategy:** `feat/OMNI-XX-description` → PR в `preprod`. Quick reviews (<24h).
+3. **Приоритет:** ML-2 (callback) — это **золотой гвоздь** Ingestion pipeline. Пока ML Engine не отправляет `READY`, весь pipeline не замкнут.
+4. **E2E тест каждый день:** После каждого мержа — `docker-compose up --build` и проверка полного пути.
+5. **Code freeze:** 31 мая. Последние 2 дня — только bugfix и подготовка демо.
+
