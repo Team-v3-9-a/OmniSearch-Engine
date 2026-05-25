@@ -26,6 +26,11 @@ fun Route.videoRoutes() {
 
     route("/api/v1") {
         route("/videos") {
+
+            get{
+                call.respond(videoUseCases.getAll().toResponseDTOList())
+            }
+            // MOCK: GET /search
             // Принимает ?query=something
             get("/search") {
                 val query = call.request.queryParameters["query"] ?: ""
