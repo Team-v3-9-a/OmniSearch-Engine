@@ -3,7 +3,7 @@ import {useSearchParams} from "react-router-dom";
 import { mockSearchResults} from './mockResults.ts'
 import {useQuery} from "@tanstack/react-query";
 import {VideoCard} from "@/components/VideoCard/VideoCard.tsx";
-import {searchVideos, type SearchResultItem} from "@/api";
+import {searchVideos, type SearchResultItem, getVideoStream} from "@/api";
 import {VideoSkeleton} from "@/components/VideoCard/VideoSkeleton/VideoSkeleton.tsx";
 
 const SearchResultsPage = () => {
@@ -17,6 +17,12 @@ const SearchResultsPage = () => {
     initialData: mockSearchResults,
     enabled: !!query
   })
+
+  const res = getVideoStream('2636f71d-9804-43b0-bdb0-00bc51ede9bb')
+
+  console.log(res)
+
+  console.log(data)
 
   const showLoading = isLoading || isFetching;
 
