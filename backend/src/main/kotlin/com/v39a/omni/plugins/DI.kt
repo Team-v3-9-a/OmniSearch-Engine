@@ -130,7 +130,7 @@ fun Application.configureFrameworks() {
             )
         }
 
-        single { VideoUseCases(get(), get(), get(), get()) }
+        single { VideoUseCases(get(), get(), get(), get(), get()) }
     }
 
     install(Koin) {
