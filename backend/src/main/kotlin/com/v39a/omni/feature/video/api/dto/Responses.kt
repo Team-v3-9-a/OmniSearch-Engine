@@ -1,4 +1,4 @@
-package com.v39a.omni.feature.video.api
+package com.v39a.omni.feature.video.api.dto
 
 import kotlinx.serialization.Serializable
 
@@ -15,4 +15,10 @@ data class VideoResponse(
 data class UploadResponse(
     val id: String,
     val message: String
+)
+
+
+@Serializable
+data class StreamUrlResponse(
+    val url: String
 )

@@ -1,6 +1,6 @@
 package com.v39a.omni.feature.video.domain
 
-import com.v39a.omni.feature.video.domain.usecase.UpdateVideoMetadataCommand
+import com.v39a.omni.feature.video.domain.command.UpdateVideoMetadataCommand
 import java.util.UUID
 
 interface VideoRepository {

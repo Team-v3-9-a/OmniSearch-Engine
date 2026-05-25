@@ -2,10 +2,10 @@ package com.v39a.omni.feature.video.infrastructure
 
 import com.v39a.omni.core.util.dbQuery
 import com.v39a.omni.core.util.nowUTC
+import com.v39a.omni.feature.video.domain.command.UpdateVideoMetadataCommand
 import com.v39a.omni.feature.video.domain.Video
 import com.v39a.omni.feature.video.domain.VideoRepository
 import com.v39a.omni.feature.video.domain.VideoStatus
-import com.v39a.omni.feature.video.domain.usecase.UpdateVideoMetadataCommand
 import com.v39a.omni.feature.video.infrastructure.VideoTable.id
 import org.jetbrains.exposed.sql.*
 import java.util.*
@@ -16,7 +16,7 @@ class PostgresVideoRepository : VideoRepository {
             it[id] = video.id
             it[fileName] = video.path.substringAfterLast("/")
             it[s3Path] = video.path
-            it[status] = video.status!!.name
+            it[status] = video.status?.name ?: VideoStatus.UPLOADED.name
 
             it[title] = video.title
             it[durationSeconds] = video.durationSeconds

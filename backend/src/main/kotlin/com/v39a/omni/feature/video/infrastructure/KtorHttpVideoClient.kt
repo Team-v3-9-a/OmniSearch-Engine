@@ -1,6 +1,6 @@
 package com.v39a.omni.feature.video.infrastructure
 
-import com.v39a.omni.feature.video.api.VideoEngineRequest
+import com.v39a.omni.feature.video.api.dto.VideoEngineRequest
 import com.v39a.omni.feature.video.domain.VideoEngineClient
 import io.ktor.client.HttpClient
 import io.ktor.client.request.post
@@ -15,7 +15,7 @@ import java.util.UUID
 
 class KtorHttpVideoClient(
     private val client: HttpClient
-) : VideoEngineClient {
+) : VideoEngineClient, AutoCloseable {
 
     private val baseUrl = System.getProperty("VIDEO_ENGINE_URL")
         ?: System.getenv("VIDEO_ENGINE_URL")
@@ -37,5 +37,9 @@ class KtorHttpVideoClient(
 
             throw Exception("Failed to start processing. Video Engine returned: ${response.status}")
         }
+    }
+
+    override fun close() {
+        client.close()
     }
 }

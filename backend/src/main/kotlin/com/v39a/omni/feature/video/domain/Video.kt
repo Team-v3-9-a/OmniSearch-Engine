@@ -18,4 +18,5 @@ enum class VideoStatus {
     PROCESSING_ML,
     READY,
     ERROR,
+    UNKNOWN
 }

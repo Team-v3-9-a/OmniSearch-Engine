@@ -6,6 +6,7 @@ import com.v39a.omni.feature.video.domain.VideoEngineClient
 import com.v39a.omni.feature.video.domain.VideoRepository
 import com.v39a.omni.feature.video.domain.VideoStatus
 import com.v39a.omni.feature.video.domain.VideoStorage
+import com.v39a.omni.feature.video.domain.command.UpdateVideoMetadataCommand
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
