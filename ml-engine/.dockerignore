@@ -1,20 +1,23 @@
 # Python
-__pycache__
+**/__pycache__/
 *.pyc
 *.pyo
-*.egg-info
-dist
-build
-.eggs
+*.pyd
+**/*.egg-info/
+**/dist/
+**/build/
 
 # Virtual environments
-.venv
-venv
-env
+**/venv/
+**/.venv/
+**/env/
+**/.env
+**/.env.local
+*.log
 
 # IDE
-.idea
-.vscode
+**/.idea/
+**/.vscode/
 *.iml
 *.swp
 *.swo
@@ -30,10 +33,6 @@ htmlcov
 .git
 .gitignore
 
-# Docker
-Dockerfile
-docker-compose*.yml
-
 # OS
 .DS_Store
 Thumbs.db
@@ -48,3 +47,6 @@ LICENSE
 *.pt
 *.onnx
 *.safetensors
+*.pth
+**/.cache/
+**/hub/

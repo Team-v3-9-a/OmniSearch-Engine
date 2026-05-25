@@ -14,7 +14,7 @@ services:
       - ./postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}" ]
-      interval: 5s
+      interval: 30s
       timeout: 5s
       retries: 5
       start_period: 10s
@@ -39,10 +39,30 @@ services:
     healthcheck:
       # curl входит в minio/minio образ; /minio/health/live — официальный liveness-endpoint
       test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
-      interval: 5s
+      interval: 30s
       timeout: 5s
       retries: 5
       start_period: 10s
+    networks:
+      - omnisearch-network
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: omnisearch-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set localminio http://minio:9000 \$S3_ACCESS_KEY \$S3_SECRET_KEY;
+      /usr/bin/mc mb --ignore-existing localminio/videos;
+      echo '{\"Version\":\"2012-10-17\",\"Statement\":[{\"Sid\":\"PublicReadGetObject\",\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"*\"]},\"Action\":[\"s3:GetObject\"],\"Resource\":[\"arn:aws:s3:::videos/media/*\"]}]}' > /tmp/inline-policy.json;
+      /usr/bin/mc anonymous set-json /tmp/inline-policy.json localminio/videos;
+      echo 'Bucket policy applied successfully!';
+      "
     networks:
       - omnisearch-network
 
@@ -58,7 +78,7 @@ services:
     healthcheck:
       # В образе Qdrant нет curl и wget, используем встроенную проверку открытого порта через bash
       test: [ "CMD-SHELL", "bash -c 'cat < /dev/null > /dev/tcp/localhost/6333'" ]
-      interval: 5s
+      interval: 30s
       timeout: 5s
       retries: 5
       start_period: 10s
@@ -94,7 +114,7 @@ services:
     healthcheck:
       # В alpine нет bash, используем wget на существующий эндпоинт, чтобы не получать 404
       test: [ "CMD-SHELL", "wget --spider -q http://localhost:8080/api/v1/videos/search || exit 1" ]
-      interval: 10s
+      interval: 30s
       timeout: 5s
       retries: 5
       start_period: 30s
@@ -106,7 +126,7 @@ services:
     build:
       context: ./frontend
       args:
-        - VITE_SERVER_HOST=http://localhost:8080
+        - VITE_SERVER_HOST=${API_EXTERNAL_URL}
     container_name: omnisearch-frontend
     restart: always
     ports:
@@ -116,7 +136,7 @@ services:
         condition: service_healthy
     healthcheck:
       test: [ "CMD-SHELL", "wget --spider -q http://localhost:80/ || exit 1" ]
-      interval: 10s
+      interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
@@ -145,7 +165,7 @@ services:
       - shared_media:/app/shared_media
     healthcheck:
       test: [ "CMD-SHELL", "wget -qO- http://localhost:8081/health || exit 1" ]
-      interval: 10s
+      interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
@@ -176,7 +196,7 @@ services:
     healthcheck:
       # wget устанавливается в ml-engine/Dockerfile; /health определён в app/main.py
       test: [ "CMD-SHELL", "wget -qO- http://localhost:8000/health | grep -q 'ready' || exit 1" ]
-      interval: 10s
+      interval: 30s
       timeout: 5s
       retries: 5
       start_period: 300s
