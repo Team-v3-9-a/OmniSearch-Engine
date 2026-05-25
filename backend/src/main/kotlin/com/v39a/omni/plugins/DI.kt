@@ -116,6 +116,11 @@ fun Application.configureFrameworks() {
                 videoRepository = get()
             )
         }
+        single {
+            GetVideosUseCase(
+                videoRepository = get()
+            )
+        }
 
         single {
             GetVideoStreamUrlUseCase(
