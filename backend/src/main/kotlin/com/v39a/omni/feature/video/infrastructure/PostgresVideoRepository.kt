@@ -2,8 +2,8 @@ package com.v39a.omni.feature.video.infrastructure
 
 import com.v39a.omni.core.util.dbQuery
 import com.v39a.omni.core.util.nowUTC
-import com.v39a.omni.feature.video.domain.Video
 import com.v39a.omni.feature.video.domain.command.UpdateVideoMetadataCommand
+import com.v39a.omni.feature.video.domain.Video
 import com.v39a.omni.feature.video.domain.VideoRepository
 import com.v39a.omni.feature.video.domain.VideoStatus
 import com.v39a.omni.feature.video.infrastructure.VideoTable.id
