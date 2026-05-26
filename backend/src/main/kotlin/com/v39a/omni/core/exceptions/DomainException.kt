@@ -14,3 +14,6 @@ class VideoNotReadyException(id: UUID, currentStatus: VideoStatus) :
 class VideoEngineUnavailableException(videoId: UUID) :
     DomainException("Video Engine is currently unavailable to process video (id=$videoId)")
 
+class MLEngineUnavailableException(message: String) :
+    DomainException(message)
+

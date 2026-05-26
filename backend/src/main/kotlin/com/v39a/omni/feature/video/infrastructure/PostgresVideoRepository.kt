@@ -54,6 +54,15 @@ class PostgresVideoRepository : VideoRepository {
             .map { toDomainModel(it) }
     }
 
+    override suspend fun getByIds(ids: Collection<UUID>): List<Video> = dbQuery {
+        if (ids.isEmpty()) emptyList()
+        else {
+            VideoTable.selectAll()
+                .where { id inList ids }
+                .map { toDomainModel(it) }
+        }
+    }
+
     // маппинг строки БД в доменную модель
     private fun toDomainModel(row: ResultRow): Video {
         return Video(
