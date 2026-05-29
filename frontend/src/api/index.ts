@@ -26,6 +26,9 @@ export interface SearchResultItem {
     title: string,
     thumbnail_url: string,
     score: number,
+    duration?: number,
+    created_date?: number
+    upload_date?: string,
     segments: {
         text_snippet: string,
         start_time: number,
@@ -38,5 +41,15 @@ export const searchVideos = async (query: string): Promise<SearchResultItem[]> =
     const response = await apiClient.get('/api/v1/videos/search', {
         params: { query }
     })
+    return response.data
+}
+
+
+export interface VideoDetails {
+    streamUrl: string;
+}
+
+export const getVideoStream = async (videoId: string): Promise<VideoDetails> => {
+    const response = await apiClient.get(`/api/v1/videos/${videoId}/stream`)
     return response.data
 }

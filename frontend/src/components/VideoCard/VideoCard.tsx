@@ -15,7 +15,16 @@ const formatTime = (time: number) => {
 export const VideoCard = (props: Props) => {
   return (
     <div className={styles.card}>
-      <Link className={styles.link} to={`/video/${props.video_id}?t=${props.segments[0]?.start_time || 0}`}>
+      <Link
+          className={styles.link}
+          to={`/video/${props.video_id}?t=${props.segments[0]?.start_time || 0}`}
+          state={{
+            title: props.title,
+            duration: props.duration,
+            created_date: props.upload_date,
+            snippet: props.segments[0]?.text_snippet || '',
+          }}
+      >
         <img src={props.thumbnail_url} alt={props.title} className={styles.thumbnail} />
       </Link>
       
@@ -32,6 +41,12 @@ export const VideoCard = (props: Props) => {
               key={segment.start_time} 
               className={styles.segmentLink} 
               to={`/video/${props.video_id}?t=${segment.start_time}`}
+              state={{
+                title: props.title,
+                duration: props.duration,
+                created_date: props.upload_date,
+                snippet: segment.text_snippet,
+              }}
             >
               <p className={styles.segmentText}>
                 <span className={styles.time}>
