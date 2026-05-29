@@ -9,5 +9,5 @@ interface VideoRepository {
     suspend fun getById(id: UUID): Video?
     suspend fun patchVideo(videoId: UUID, command: UpdateVideoMetadataCommand)
     suspend fun getAll(): List<Video>
-
+    suspend fun getByIds(ids: Collection<UUID>): List<Video>
 }
