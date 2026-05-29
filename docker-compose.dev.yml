@@ -1,15 +1,18 @@
+name: omnisearch-dev
+
 services:
   # ---- 1. PostgreSQL ----
   postgres:
     image: postgres:15-alpine
-    container_name: omnisearch-postgres
+    container_name: omnisearch-postgres-dev
     restart: always
+    env_file: [.env.dev]
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - ./postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -18,40 +21,51 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
     networks:
-      - omnisearch-network
+      - omnisearch-dev-network
 
   # ---- 2. MinIO (S3) ----
   minio:
     image: minio/minio:latest
-    container_name: omnisearch-minio
+    container_name: omnisearch-minio-dev
     restart: always
     command: server /data --console-address ":9001"
+    env_file: [.env.dev]
     environment:
       MINIO_ROOT_USER: ${S3_ACCESS_KEY}
       MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "9002:9000"
+      - "9003:9001"
     volumes:
       - ./minio_data:/data
-      - shared_media:/app/shared_media
+      - shared_media_dev:/app/shared_media
     healthcheck:
-      # curl входит в minio/minio образ; /minio/health/live — официальный liveness-endpoint
       test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
       interval: 30s
       timeout: 5s
       retries: 5
       start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
     networks:
-      - omnisearch-network
+      - omnisearch-dev-network
 
   minio-init:
     image: minio/mc:latest
-    container_name: omnisearch-minio-init
+    container_name: omnisearch-minio-init-dev
     depends_on:
       minio:
         condition: service_healthy
+    env_file: [.env.dev]
     environment:
       S3_ACCESS_KEY: ${S3_ACCESS_KEY}
       S3_SECRET_KEY: ${S3_SECRET_KEY}
@@ -64,34 +78,38 @@ services:
       echo 'Bucket policy applied successfully!';
       "
     networks:
-      - omnisearch-network
+      - omnisearch-dev-network
 
   # ---- 3. Qdrant (Vector DB) ----
   qdrant:
     image: qdrant/qdrant:latest
-    container_name: omnisearch-qdrant
+    container_name: omnisearch-qdrant-dev
     restart: always
     ports:
-      - "6333:6333"
+      - "6334:6333"
     volumes:
       - ./qdrant_data:/qdrant/storage
     healthcheck:
-      # В образе Qdrant нет curl и wget, используем встроенную проверку открытого порта через bash
       test: [ "CMD-SHELL", "bash -c 'cat < /dev/null > /dev/tcp/localhost/6333'" ]
       interval: 30s
       timeout: 5s
       retries: 5
       start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
     networks:
-      - omnisearch-network
+      - omnisearch-dev-network
 
   # ---- 4. Backend (Ktor) ----
   backend:
     build: ./backend
-    container_name: omnisearch-backend
+    container_name: omnisearch-backend-dev
     restart: always
     ports:
-      - "8080:8080"
+      - "8081:8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -99,6 +117,7 @@ services:
         condition: service_healthy
       qdrant:
         condition: service_healthy
+    env_file: [.env.dev]
     environment:
       DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME}
       DB_USER: ${DB_USER}
@@ -110,16 +129,20 @@ services:
       QDRANT_HOST: qdrant
       SHARED_MEDIA_PATH: /app/shared_media
     volumes:
-      - shared_media:/app/shared_media
+      - shared_media_dev:/app/shared_media
     healthcheck:
-      # В alpine нет bash, используем wget на существующий эндпоинт, чтобы не получать 404
       test: [ "CMD-SHELL", "wget --spider -q http://localhost:8080/api/v1/videos/search || exit 1" ]
       interval: 30s
       timeout: 5s
       retries: 5
       start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
     networks:
-      - omnisearch-network
+      - omnisearch-dev-network
 
   # ---- 5. Frontend (React + Nginx) ----
   frontend:
@@ -127,10 +150,10 @@ services:
       context: ./frontend
       args:
         - VITE_SERVER_HOST=${API_EXTERNAL_URL}
-    container_name: omnisearch-frontend
+    container_name: omnisearch-frontend-dev
     restart: always
     ports:
-      - "3000:80"
+      - "3001:80"
     depends_on:
       backend:
         condition: service_healthy
@@ -140,19 +163,25 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
     networks:
-      - omnisearch-network
+      - omnisearch-dev-network
 
   # ---- 6. Video Engine (Go) ----
   video-engine:
     build: ./video-engine
-    container_name: omnisearch-video-engine
+    container_name: omnisearch-video-engine-dev
     restart: always
     ports:
-      - "8081:8081"
+      - "8083:8081"
     depends_on:
       minio:
         condition: service_healthy
+    env_file: [.env.dev]
     environment:
       PORT: 8081
       S3_ENDPOINT: http://minio:9000
@@ -162,28 +191,36 @@ services:
       BACKEND_API_URL: http://backend:8080
       INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
     volumes:
-      - shared_media:/app/shared_media
+      - shared_media_dev:/app/shared_media
     healthcheck:
       test: [ "CMD-SHELL", "wget -qO- http://localhost:8081/health || exit 1" ]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
     networks:
-      - omnisearch-network
+      - omnisearch-dev-network
 
   # ---- 7. ML Engine (FastAPI + PyTorch) ----
+  # Запускается только с профилем: docker compose --profile gpu -f docker-compose.dev.yml up -d
   ml-engine:
     build: ./ml-engine
-    container_name: omnisearch-ml-engine
+    container_name: omnisearch-ml-engine-dev
     restart: always
+    profiles: [gpu]
     ports:
-      - "8000:8000"
+      - "8001:8000"
     depends_on:
       qdrant:
         condition: service_healthy
       minio:
         condition: service_healthy
+    env_file: [.env.dev]
     environment:
       QDRANT_HOST: qdrant
       QDRANT_PORT: 6333
@@ -193,27 +230,29 @@ services:
       INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
       BACKEND_URL: http://backend:8080
     volumes:
-      - ./model_cache:/models
+      - ~/omnisearch/model_cache:/models
     healthcheck:
-      # wget устанавливается в ml-engine/Dockerfile; /health определён в app/main.py
       test: [ "CMD-SHELL", "wget -qO- http://localhost:8000/health | grep -q 'ready' || exit 1" ]
       interval: 30s
       timeout: 5s
       retries: 5
       start_period: 300s
-    networks:
-      - omnisearch-network
     deploy:
       resources:
+        limits:
+          cpus: "2.0"
+          memory: 4G
         reservations:
           devices:
             - driver: nvidia
               count: 1
               capabilities: [ gpu ]
+    networks:
+      - omnisearch-dev-network
 
 volumes:
-  shared_media:
+  shared_media_dev:
 
 networks:
-  omnisearch-network:
+  omnisearch-dev-network:
     driver: bridge
