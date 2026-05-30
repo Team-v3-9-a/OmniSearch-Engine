@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"omnisearch/video-engine/internal/ml"
 	"omnisearch/video-engine/internal/pipeline"
@@ -19,6 +20,7 @@ type Server struct {
 	s3Client *s3.Client
 	mlClient *ml.Client
 	mux      *http.ServeMux
+	httpSrv  *http.Server
 }
 
 func NewServer() (*Server, error) {
@@ -40,9 +42,29 @@ func NewServer() (*Server, error) {
 	return s, nil
 }
 
-func (s *Server) Start(port string) error {
+func (s *Server) Start(ctx context.Context, port string) error {
 	log.Printf("Запуск сервера на порту %s", port)
-	return http.ListenAndServe(port, s.mux)
+	s.httpSrv = &http.Server{
+		Addr:    port,
+		Handler: s.mux,
+	}
+
+	go func() {
+		<-ctx.Done()
+		log.Println("Получен сигнал завершения работы, останавливаем HTTP сервер...")
+
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		if err := s.httpSrv.Shutdown(shutdownCtx); err != nil {
+			log.Printf("Ошибка при graceful shutdown: %v", err)
+		}
+	}()
+
+	if err := s.httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		return err
+	}
+	return nil
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
