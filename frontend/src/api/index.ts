@@ -1,4 +1,5 @@
 import {apiClient} from "@/api/client.ts";
+import type { MyVideoItem, SearchResultItem, VideoDetails } from "@/types/api.ts";
 
 export const uploadVideo = async (
     videoFile: FormData,
@@ -12,7 +13,6 @@ export const uploadVideo = async (
             }
         }
     })
-
     return response.data
 }
 
@@ -21,22 +21,6 @@ export const getVideoStatus = async (videoId: string)=> {
     return response.data;
 }
 
-export interface SearchResultItem {
-    video_id: string,
-    title: string,
-    thumbnail_url: string,
-    score: number,
-    duration?: number,
-    created_date?: number
-    upload_date?: string,
-    segments: {
-        text_snippet: string,
-        start_time: number,
-        end_time: number
-    }[]
-}
-
-
 export const searchVideos = async (query: string): Promise<SearchResultItem[]> => {
     const response = await apiClient.get('/api/v1/videos/search', {
         params: { query }
@@ -44,12 +28,12 @@ export const searchVideos = async (query: string): Promise<SearchResultItem[]> =
     return response.data
 }
 
-
-export interface VideoDetails {
-    streamUrl: string;
-}
-
 export const getVideoStream = async (videoId: string): Promise<VideoDetails> => {
     const response = await apiClient.get(`/api/v1/videos/${videoId}/stream`)
     return response.data
+}
+
+export const getMyVideos = async (): Promise<MyVideoItem[]> => {
+    const response = await apiClient.get('/api/v1/videos/my')
+    return response.data;
 }

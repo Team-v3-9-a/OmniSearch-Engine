@@ -1,4 +1,4 @@
-import type { SearchResultItem } from "@/api";
+import type { SearchResultItem } from "@/types/api.ts";
 
 export const mockSearchResults: SearchResultItem[] = [
   {

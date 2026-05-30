@@ -1,5 +1,5 @@
 :root {
-  font-family: 'Mulish' , sans-serif;
+  font-family: 'Mulish', sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
@@ -14,18 +14,33 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
-button, input, textarea, select {
+button,
+input,
+textarea,
+select {
   font-family: inherit;
 }
 
-body{
+body {
   margin: 0;
   padding: 0;
-  overflow: hidden;
+}
+
+html {
+  height: 100%;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 h1,
@@ -36,6 +51,10 @@ h5,
 h6,
 p {
   margin: 0;
+}
+
+h3 {
+  font-size: 20px;
 }
 
 ul {

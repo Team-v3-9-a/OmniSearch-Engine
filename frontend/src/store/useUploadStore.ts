@@ -1,20 +1,5 @@
+import type { UploadStatus, UploadTask } from '@/types/api';
 import { create } from 'zustand'
-
-export type UploadStatus =
-    | 'UPLOADING'
-    | 'UPLOADED'
-    | 'PROCESSING_MEDIA'
-    | 'PROCESSING_ML'
-    | 'READY'
-    | 'ERROR'
-
-export interface UploadTask {
-  localId: string;
-  filename: string;
-  progress: number;
-  status: UploadStatus;
-  backendId?: string;
-}
 
 export interface UploadStore {
   tasks: Record<string, UploadTask>,
@@ -24,7 +9,7 @@ export interface UploadStore {
   removeTask: (localId: string) => void
 }
 
-export const useUploadStore = create<UploadStore>((set, get) => ({
+export const useUploadStore = create<UploadStore>((set) => ({
   tasks: {},
   addTask: (localId, filename) => set((state) => ({
     tasks: {
@@ -50,12 +35,12 @@ export const useUploadStore = create<UploadStore>((set, get) => ({
       }
     }))
 
-    if (status == 'READY' || status == 'ERROR') {
-      const timeoutMs = status == 'READY' ? 10000 : 20000
-      setTimeout(() => {
-        get().removeTask(localId)
-      }, timeoutMs)
-    }
+    // if (status == 'READY' || status == 'ERROR') {
+    //   const timeoutMs = status == 'READY' ? 10000 : 20000
+    //   setTimeout(() => {
+    //     get().removeTask(localId)
+    //   }, timeoutMs)
+    // }
   },
   removeTask: (localId) => set((state) => {
     const newTasks = {...state.tasks}

@@ -1,13 +1,23 @@
 import { uploadVideo } from "@/api";
-import { toast } from "react-toastify";
-import {useUploadStore} from "@/store/useUploadStore.ts";
+import { useUploadStore } from "@/store/useUploadStore.ts";
 
+
+const generateUUID = () => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
 
 export const useUploadVideo = () => {
-  const {addTask, updateProgress, updateStatus} = useUploadStore()
+  const { addTask, updateProgress, updateStatus } = useUploadStore()
 
   const uploadFile = async (file: File) => {
-    const localId = crypto.randomUUID()
+    const localId = generateUUID()
 
     const formData = new FormData();
 
@@ -21,10 +31,8 @@ export const useUploadVideo = () => {
         updateProgress(localId, progress)
       })
       updateStatus(localId, 'UPLOADED', data.id)
-      toast.success(`Видео ${file.name} загружено на сервер`)
     } catch (e) {
       updateStatus(localId, 'ERROR')
-      toast.error(`Ошибка`)
     }
   }
 

@@ -20,17 +20,16 @@
 
     gap: 10px;
 
-    /*box-shadow: 0px 3px 9px rgba(19, 127, 236, 0.4);*/
-    /*box-shadow: 0px 0.5px 0px 1px rgb(75, 168, 255),*/
-    /*            0px -0.5px 0px 1px rgb(62, 161, 230);*/
+    transition: background-color 0.3s ease-in-out, opacity 0.15s ease-in-out;
 
-    &:hover{
-        background-color: var(--button-hover-color);
-        transition: background-color 0.3s ease-in-out;
+    @media (hover: hover) {
+        &:hover {
+            background-color: var(--button-hover-color);
+        }
     }
 
-    &:active{
-        scale: 0.9;
-        transition: scale 0.2s ease-in-out;
+    &:active {
+        background-color: var(--button-hover-color);
+        opacity: 0.9;
     }
 }
