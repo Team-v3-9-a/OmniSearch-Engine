@@ -100,8 +100,8 @@ flowchart LR
 - HTTP-сервер делает `Shutdown(ctx)` с таймаутом 30 секунд
 
 **Подзадачи:**
-- [ ] Signal handling в `main.go`
-- [ ] `http.Server.Shutdown()` вместо голого `ListenAndServe`
+- [x] Signal handling в `main.go`
+- [x] `http.Server.Shutdown()` вместо голого `ListenAndServe`
 
 ---
 
