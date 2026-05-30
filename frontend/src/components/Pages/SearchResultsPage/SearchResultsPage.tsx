@@ -1,6 +1,5 @@
 import styles from './SearchResultsPage.module.css'
 import { useSearchParams } from "react-router-dom";
-import { mockSearchResults } from './mockResults.ts'
 import { VideoCard } from "@/components/VideoCard/VideoCard.tsx";
 import type { SearchResultItem } from "@/types/api.ts";
 import { VideoSkeleton } from "@/components/VideoCard/VideoSkeleton/VideoSkeleton.tsx";

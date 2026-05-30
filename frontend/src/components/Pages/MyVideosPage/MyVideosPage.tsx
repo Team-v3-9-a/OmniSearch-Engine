@@ -6,7 +6,6 @@ import { parseDate } from '@/utils/parseDate';
 import { VideoFileIcon } from '@/assets/Icons/VideoFile';
 import { StatusLabel } from '@/components/StatusLabel/StatusLabel';
 import { useUploadStore } from '@/store/useUploadStore.ts';
-import { mockData } from './mockData';
 
 export const MyVideosPage = () => {
   const { tasks } = useUploadStore();
