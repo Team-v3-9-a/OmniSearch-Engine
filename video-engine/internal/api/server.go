@@ -9,12 +9,19 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"time"
 
 	"omnisearch/video-engine/internal/ml"
 	"omnisearch/video-engine/internal/pipeline"
 	"omnisearch/video-engine/internal/s3"
 )
+
+var safeVideoIDRegex = regexp.MustCompile(`^[a-zA-Z0-9_\-]+$`)
+
+func isValidVideoID(id string) bool {
+	return safeVideoIDRegex.MatchString(id)
+}
 
 type Server struct {
 	s3Client *s3.Client
@@ -86,6 +93,11 @@ func (s *Server) handleProcess(w http.ResponseWriter, r *http.Request) {
 
 	if req.VideoID == "" || req.S3Path == "" {
 		http.Error(w, "video_id and s3_path are required", http.StatusBadRequest)
+		return
+	}
+
+	if !isValidVideoID(req.VideoID) {
+		http.Error(w, "invalid video_id format", http.StatusBadRequest)
 		return
 	}
 
