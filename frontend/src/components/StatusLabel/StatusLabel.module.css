@@ -1,0 +1,30 @@
+.status {
+  padding: 1px 14px;
+  font-size: 12px;
+  border-radius: 8px;
+  width: fit-content;
+}
+
+.error {
+  background-color: var(--error-color);
+}
+
+.uploading {
+  background-color: var(--uploading-color);
+}
+
+.uploaded {
+  background-color: var(--uploaded-color);
+}
+
+.processing_media {
+  background-color: var(--processing_media-color);
+}
+
+.processing_ml {
+  background-color: var(--processing_ml-color);
+}
+
+.ready {
+  background-color: var(--green);
+}
