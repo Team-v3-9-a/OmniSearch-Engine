@@ -1,6 +1,7 @@
 package video
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 
@@ -8,7 +9,7 @@ import (
 )
 
 // SampleFrames извлекает кадры с заданной частотой (targetFPS).
-func SampleFrames(inputPath, outputDir string, targetFPS int) (float64, error) {
+func SampleFrames(ctx context.Context, inputPath, outputDir string, targetFPS int) (float64, error) {
 	video, err := gocv.VideoCaptureFile(inputPath)
 	if err != nil {
 		return 0, fmt.Errorf("не удалось открыть видео %s: %v", inputPath, err)
@@ -34,6 +35,12 @@ func SampleFrames(inputPath, outputDir string, targetFPS int) (float64, error) {
 	frameCount, savedCount := 0, 0
 
 	for {
+		select {
+		case <-ctx.Done():
+			return 0, ctx.Err()
+		default:
+		}
+
 		if ok := video.Read(&img); !ok || img.Empty() {
 			break
 		}

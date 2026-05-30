@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	
@@ -9,7 +10,7 @@ import (
 )
 
 // Process запускает воркеры параллельно и дожидается их выполнения
-func Process(inputPath, outAudioPath, outFramesDir string) (float64, error) {
+func Process(ctx context.Context, inputPath, outAudioPath, outFramesDir string) (float64, error) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 
@@ -20,7 +21,7 @@ func Process(inputPath, outAudioPath, outFramesDir string) (float64, error) {
 	go func() {
 		defer wg.Done()
 		fmt.Println("[Audio Worker] Начинаю извлечение аудио...")
-		audioErr = audio.Extract(inputPath, outAudioPath)
+		audioErr = audio.Extract(ctx, inputPath, outAudioPath)
 		if audioErr == nil {
 			fmt.Println("[Audio Worker] Успешно завершено!")
 		}
@@ -30,7 +31,7 @@ func Process(inputPath, outAudioPath, outFramesDir string) (float64, error) {
 	go func() {
 		defer wg.Done()
 		fmt.Println("[Video Worker] Начинаю нарезку кадров (1 FPS)...")
-		duration, videoErr = video.SampleFrames(inputPath, outFramesDir, 1)
+		duration, videoErr = video.SampleFrames(ctx, inputPath, outFramesDir, 1)
 		if videoErr == nil {
 			fmt.Println("[Video Worker] Успешно завершено! Длительность:", duration)
 		}
