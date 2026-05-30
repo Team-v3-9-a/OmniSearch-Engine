@@ -20,7 +20,7 @@ fun Application.configureDatabase() {
         username = dbUser
         password = dbPassword
         driverClassName = dbDriver
-        maximumPoolSize = 3
+        maximumPoolSize = environment.config.propertyOrNull("storage.maxPoolSize")?.getString()?.toInt() ?: 15
         isAutoCommit = false
         transactionIsolation = "TRANSACTION_REPEATABLE_READ"
         validate()

@@ -3,7 +3,6 @@ package com.v39a.omni.core.util
 import com.v39a.omni.core.exceptions.InternalApiForbiddenException
 import com.v39a.omni.feature.video.api.dto.ParsedUploadRequest
 import io.ktor.http.content.PartData
-import io.ktor.http.content.forEachPart
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.formFieldLimit
 import io.ktor.server.request.header
@@ -23,14 +22,16 @@ fun ApplicationCall.requireInternalSecret() {
 }
 
 suspend fun ApplicationCall.receiveVideoMultipart(): ParsedUploadRequest {
-    this.formFieldLimit = 500L * 1024 * 1024 * 1024
+    this.formFieldLimit = 10L * 1024 * 1024 // 10 MB limit for form fields to prevent DoS
 
     var title = ""
     var durationSeconds = 0
     var thumbnailPath = ""
     var filePart: PartData.FileItem? = null
 
-    receiveMultipart().forEachPart { part ->
+    val multipart = receiveMultipart()
+    while (true) {
+        val part = multipart.readPart() ?: break
         when (part) {
             is PartData.FormItem -> {
                 when (part.name) {
@@ -40,7 +41,10 @@ suspend fun ApplicationCall.receiveVideoMultipart(): ParsedUploadRequest {
                 }
                 part.dispose()
             }
-            is PartData.FileItem -> filePart = part
+            is PartData.FileItem -> {
+                // Do not dispose now. The caller (VideoRoutes) handles the lifecycle of this part.
+                filePart = part
+            }
             else -> part.dispose()
         }
     }

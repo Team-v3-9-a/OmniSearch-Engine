@@ -1,19 +1,20 @@
 package com.v39a.omni.feature.video.domain.usecase
 
-import com.v39a.omni.feature.video.api.dto.SearchResultItem
-import com.v39a.omni.feature.video.api.dto.SearchResultSegment
 import com.v39a.omni.feature.video.domain.MLEngineClient
 import com.v39a.omni.feature.video.domain.VideoRepository
 import com.v39a.omni.feature.video.domain.VideoStatus
 import com.v39a.omni.feature.video.domain.VideoStorage
+import com.v39a.omni.feature.video.domain.VideoSearchResult
+import com.v39a.omni.feature.video.domain.VideoSearchSegment
 import java.util.UUID
 
 class SearchVideosUseCase(
     private val mlEngineClient: MLEngineClient,
     private val videoRepository: VideoRepository,
-    private val videoStorage: VideoStorage
+    private val videoStorage: VideoStorage,
+    private val externalUrl: String
 ) {
-    suspend operator fun invoke(query: String): List<SearchResultItem> {
+    suspend operator fun invoke(query: String): List<VideoSearchResult> {
         if (query.isBlank()) {
             return emptyList()
         }
@@ -39,7 +40,7 @@ class SearchVideosUseCase(
             .filter { it.status == VideoStatus.READY }
             .associateBy { it.id }
 
-        val groupedSegments = LinkedHashMap<UUID, MutableList<SearchResultSegment>>()
+        val groupedSegments = LinkedHashMap<UUID, MutableList<VideoSearchSegment>>()
         val videoMaxScore = mutableMapOf<UUID, Double>()
 
         for (item in mlResults) {
@@ -58,35 +59,31 @@ class SearchVideosUseCase(
 
             val segmentsList = groupedSegments.getOrPut(uuid) { mutableListOf() }
             segmentsList.add(
-                SearchResultSegment(
-                    text_snippet = item.textSnippet ?: "",
-                    start_time = item.startTime ?: 0.0,
-                    end_time = item.endTime ?: 0.0
+                VideoSearchSegment(
+                    textSnippet = item.textSnippet ?: "",
+                    startTime = item.startTime ?: 0.0,
+                    endTime = item.endTime ?: 0.0
                 )
             )
         }
 
-        val results = mutableListOf<SearchResultItem>()
+        val results = mutableListOf<VideoSearchResult>()
         for ((videoId, segments) in groupedSegments) {
             val video = videos[videoId]!!
             val score = videoMaxScore[videoId] ?: 0.0
 
             val thumbnailUrl = if (video.thumbnailPath.isNotBlank()) {
                 videoStorage.getPresignedUrl(video.thumbnailPath)
-                    .replace("http://minio:9000", "http://localhost:9000")
+                    .replace("http://minio:9000", externalUrl)
             } else {
                 ""
             }
 
             results.add(
-                SearchResultItem(
-                    video_id = video.id.toString(),
-                    title = video.title,
-                    thumbnail_url = thumbnailUrl,
-                    duration = video.durationSeconds,
-                    created_date = video.createdAt.toString(),
-                    upload_date = video.updatedAt.toString(),
+                VideoSearchResult(
+                    video = video,
                     score = score,
+                    thumbnailUrl = thumbnailUrl,
                     segments = segments
                 )
             )

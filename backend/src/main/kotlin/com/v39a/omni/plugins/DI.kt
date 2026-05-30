@@ -27,6 +27,7 @@ import io.minio.MinioClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.serialization.json.Json
 import org.koin.dsl.module
 import org.koin.dsl.onClose
@@ -34,27 +35,30 @@ import org.koin.ktor.plugin.Koin
 import org.koin.logger.slf4jLogger
 
 fun Application.configureFrameworks() {
+    val config = environment.config
+
     val videoModule = module {
         single {
-            val endpoint = System.getProperty("S3_ENDPOINT") ?: System.getenv("S3_ENDPOINT") ?: "http://minio:9000"
-            val accessKey = System.getProperty("S3_ACCESS_KEY") ?: System.getenv("S3_ACCESS_KEY") ?: "admin"
-            val secretKey = System.getProperty("S3_SECRET_KEY") ?: System.getenv("S3_SECRET_KEY") ?: "password123"
+            val endpoint = config.propertyOrNull("minio.endpoint")?.getString() ?: "http://minio:9000"
+            val accessKey = config.propertyOrNull("minio.accessKey")?.getString() ?: "admin"
+            val secretKey = config.propertyOrNull("minio.secretKey")?.getString() ?: "password123"
 
             val client = MinioClient.builder()
                 .endpoint(endpoint)
                 .credentials(accessKey, secretKey)
                 .build()
 
+            val bucket = config.propertyOrNull("minio.bucket")?.getString() ?: "videos"
             try {
-                val found = client.bucketExists(BucketExistsArgs.builder().bucket("videos").build())
+                val found = client.bucketExists(BucketExistsArgs.builder().bucket(bucket).build())
                 if (!found) {
-                    client.makeBucket(MakeBucketArgs.builder().bucket("videos").build())
-                    println("Bucket 'videos' created successfully!")
+                    client.makeBucket(MakeBucketArgs.builder().bucket(bucket).build())
+                    println("Bucket '$bucket' created successfully!")
                 } else {
-                    println("Bucket 'videos' already exists.")
+                    println("Bucket '$bucket' already exists.")
                 }
             } catch (e: Exception) {
-                println("Failed to initialize bucket: ${e.message}")
+                println("Failed to initialize bucket '$bucket': ${e.message}")
             }
 
             client
@@ -63,7 +67,7 @@ fun Application.configureFrameworks() {
         single<VideoStorage> {
             MinioVideoStorage(
                 minioClient = get(),
-                bucket = System.getenv("minio.bucket") ?: "videos"
+                bucket = config.propertyOrNull("minio.bucket")?.getString() ?: "videos"
             )
         }
 
@@ -106,6 +110,8 @@ fun Application.configureFrameworks() {
 
         single<CoroutineScope> {
             CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        } onClose { scope ->
+            scope?.cancel()
         }
 
         single {
@@ -136,6 +142,7 @@ fun Application.configureFrameworks() {
             GetVideoStreamUrlUseCase(
                 videoStorage = get(),
                 videoRepository = get(),
+                externalUrl = config.propertyOrNull("minio.externalUrl")?.getString() ?: "http://localhost:9000"
             )
         }
 
@@ -143,7 +150,8 @@ fun Application.configureFrameworks() {
             SearchVideosUseCase(
                 mlEngineClient = get(),
                 videoRepository = get(),
-                videoStorage = get()
+                videoStorage = get(),
+                externalUrl = config.propertyOrNull("minio.externalUrl")?.getString() ?: "http://localhost:9000"
             )
         }
 

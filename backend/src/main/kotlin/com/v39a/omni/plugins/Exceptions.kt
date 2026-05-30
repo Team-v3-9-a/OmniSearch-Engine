@@ -12,25 +12,29 @@ import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.response.respond
 
 fun Application.configureExceptions() {
+    val logger = environment.log
+
     install(StatusPages) {
 
         exception<RuntimeException> { call, cause ->
+            logger.error("RuntimeException occurred: ${cause.message}", cause)
             if (cause.message?.contains("MinIO") == true) {
                 call.respond(
                     HttpStatusCode.BadGateway,
-                    mapOf("error" to "Storage integration failed", "details" to cause.message)
+                    mapOf("error" to "Storage integration failed")
                 )
             } else {
                 call.respond(
                     HttpStatusCode.InternalServerError,
-                    mapOf("error" to "Internal server error", "details" to cause.localizedMessage)
+                    mapOf("error" to "Internal server error")
                 )
             }
         }
         exception<Throwable> { call, cause ->
+            logger.error("Unhandled exception: ${cause.message}", cause)
             call.respond(
                 HttpStatusCode.InternalServerError,
-                mapOf("error" to "Something went wrong", "details" to cause.message)
+                mapOf("error" to "Something went wrong")
             )
         }
         exception<VideoNotFoundException> { call, cause ->

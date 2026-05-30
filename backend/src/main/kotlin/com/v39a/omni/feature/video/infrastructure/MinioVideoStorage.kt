@@ -40,10 +40,16 @@ class MinioVideoStorage(
     }
 
     override suspend fun getPresignedUrl(s3Path: String): String = withContext(Dispatchers.IO) {
+        val objectKey = if (s3Path.startsWith("$bucket/")) {
+            s3Path.removePrefix("$bucket/")
+        } else {
+            s3Path
+        }
+
         val args = GetPresignedObjectUrlArgs.builder()
             .method(Method.GET)
             .bucket(bucket)
-            .`object`(s3Path)
+            .`object`(objectKey)
             .expiry(1, TimeUnit.HOURS)
             .build()
 
