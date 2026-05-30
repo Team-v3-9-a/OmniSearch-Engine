@@ -116,7 +116,7 @@ func (s *Server) processVideo(videoID, s3Path string) {
 		baseDir = "/app/shared_media"
 	}
 
-	workDir := filepath.Join(baseDir, videoID)
+	workDir := filepath.Join(baseDir, fmt.Sprintf("%s_%d", videoID, time.Now().UnixNano()))
 	os.MkdirAll(workDir, 0755)
 	
 	// В случае успеха удаляем локальные файлы, можно и при ошибке
