@@ -139,7 +139,7 @@ func (s *Server) processVideo(videoID, s3Path string) {
 	}
 
 	// 2. Локальный процессинг (audio + frames)
-	duration, err := pipeline.Process(localVideoPath, outAudioPath, outFramesDir)
+	duration, err := pipeline.Process(ctx, localVideoPath, outAudioPath, outFramesDir)
 	if err != nil {
 		log.Printf("Ошибка обработки видео %s: %v", videoID, err)
 		s.sendCallback(videoID, "ERROR", 0, "")
