@@ -205,7 +205,9 @@ func (s *Server) sendCallback(videoID, status string, duration float64, thumbnai
 		req.Header.Set("X-Internal-Secret", apiSecret)
 	}
 
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Printf("Ошибка отправки callback: %v", err)
