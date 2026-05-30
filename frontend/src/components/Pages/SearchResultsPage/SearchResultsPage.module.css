@@ -14,30 +14,38 @@
 
 .title {
   color: var(--text-primary-color);
+  margin-bottom: 8px;
   font-weight: bold;
-  font-size: 18px;
+  font-size: 20px;
   text-align: start;
 }
 
 .resultList {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
   gap: 8px;
   width: 100%;
-
-}
-
-.skeletonContainer {
-  display: flex;
-  flex-direction: column;
-  gap: 8px
 }
 
 .emptyState {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 40px;
-    color: var(--text-secondary-color);
-    font-size: 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px;
+  color: var(--text-secondary-color);
+  font-size: 16px;
+}
+
+.errorState {
+  color: var(--error-color);
+}
+
+@media (max-width: 768px) {
+  .mainContainer {
+    padding: 16px;
+  }
+
+  .resultList {
+    grid-template-columns: repeat(auto-fill, minmax(100%, 1fr));
+  }
 }

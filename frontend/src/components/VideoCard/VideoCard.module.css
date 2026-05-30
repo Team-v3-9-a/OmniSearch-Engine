@@ -1,12 +1,11 @@
 .card {
   display: flex;
+  flex-direction: column;
   gap: 16px;
   color: var(--text-primary-color);
   padding: 16px;
-  border: 1px solid var(--accent-color);
+  border: 1px solid var(--separator-color);
   border-radius: 8px;
-
-  background-color: #a070e81A;
 }
 
 .link {
@@ -16,11 +15,11 @@
 }
 
 .thumbnail {
+  width: 100%;
   height: fit-content;
   border-radius: 4px;
   object-fit: cover;
   flex-shrink: 0;
-  display: block;
 }
 
 .info {
@@ -57,12 +56,29 @@
 }
 
 .segmentText {
+  display: flex;
+  height: 21px;
+  gap: 4px;
   color: var(--text-secondary-color);
   font-size: 14px;
+  align-items: center;
+  overflow: hidden;
+}
+
+.snippet {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   margin: 0;
+  flex: 1;
+  min-width: 0;
 }
 
 .time {
-  color: var(--accent-color);
+  width: 127px;
+  color: var(--text-primary-color);
   font-weight: 500;
 }
