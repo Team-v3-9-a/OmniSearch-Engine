@@ -83,13 +83,14 @@ fun Route.videoRoutes() {
 
         }
 
-        route("/api/v1/internal/videos") {
+        route("/internal/videos") {
             patch("/{id}") {
                 call.requireInternalSecret()
 
                 val request = call.receive<UpdateVideoRequest>()
 
-                if (request.status == null && request.durationSeconds == null && request.thumbnailPath == null) {
+                if (request.status == null && request.durationSeconds == null &&
+                    request.thumbnailPath == null && request.fps == null && request.resolution == null) {
                     call.respond(HttpStatusCode.BadRequest, mapOf("error" to "No fields to update"))
                     return@patch
                 }
@@ -97,7 +98,9 @@ fun Route.videoRoutes() {
                 val command = UpdateVideoMetadataCommand(
                     status = request.status,
                     durationSeconds = request.durationSeconds,
-                    thumbnailPath = request.thumbnailPath
+                    thumbnailPath = request.thumbnailPath,
+                    fps = request.fps,
+                    resolution = request.resolution
                 )
                 videoUseCases.patchMetadata.execute(call.videoId, command)
 

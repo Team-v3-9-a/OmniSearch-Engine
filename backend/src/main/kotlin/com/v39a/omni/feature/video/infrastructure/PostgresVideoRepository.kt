@@ -21,6 +21,8 @@ class PostgresVideoRepository : VideoRepository {
             it[title] = video.title
             it[durationSeconds] = video.durationSeconds
             it[thumbnailPath] = video.thumbnailPath
+            it[fps] = video.fps
+            it[resolution] = video.resolution
         }
     }
 
@@ -43,6 +45,8 @@ class PostgresVideoRepository : VideoRepository {
             command.status?.let { statement[status] = it.name }
             command.durationSeconds?.let { statement[durationSeconds] = it.toInt() }
             command.thumbnailPath?.let { statement[thumbnailPath] = it }
+            command.fps?.let { statement[fps] = it }
+            command.resolution?.let { statement[resolution] = it }
             statement[updatedAt] = nowUTC()
         }
     }
@@ -74,6 +78,8 @@ class PostgresVideoRepository : VideoRepository {
             createdAt = row[VideoTable.createdAt],
             status = VideoStatus.valueOf(row[VideoTable.status]),
             updatedAt = row[VideoTable.updatedAt],
+            fps = row[VideoTable.fps],
+            resolution = row[VideoTable.resolution],
         )
     }
 }

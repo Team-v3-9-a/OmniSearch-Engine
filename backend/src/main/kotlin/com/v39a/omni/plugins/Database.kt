@@ -1,9 +1,12 @@
 package com.v39a.omni.plugins
 
+import com.v39a.omni.feature.video.infrastructure.VideoTable
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import io.ktor.server.application.*
 import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.SchemaUtils
+import org.jetbrains.exposed.sql.transactions.transaction
 
 fun Application.configureDatabase() {
 
@@ -27,11 +30,11 @@ fun Application.configureDatabase() {
         val dataSource = HikariDataSource(config)
         Database.connect(dataSource)
         environment.log.info("Database connected successfully!")
-        // todo mock? later
-//        transaction {
-//            SchemaUtils.create(VideoTable)
-//
-//        }
+        
+        transaction {
+            SchemaUtils.createMissingTablesAndColumns(VideoTable)
+        }
+        environment.log.info("Database schema initialized successfully!")
     } catch (e: Exception) {
         environment.log.error("! Failed to connect to database: ${e.message}")
         throw e
