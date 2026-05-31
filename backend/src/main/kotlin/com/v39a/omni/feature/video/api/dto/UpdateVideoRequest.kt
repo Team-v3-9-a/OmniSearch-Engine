@@ -7,5 +7,7 @@ import kotlinx.serialization.Serializable
 data class UpdateVideoRequest(
     val status: VideoStatus? = null,
     val durationSeconds: Long? = null,
-    val thumbnailPath: String? = null
+    val thumbnailPath: String? = null,
+    val fps: Double? = null,
+    val resolution: String? = null
 )

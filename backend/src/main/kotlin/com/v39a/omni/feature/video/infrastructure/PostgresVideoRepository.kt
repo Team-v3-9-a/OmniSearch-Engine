@@ -21,6 +21,8 @@ class PostgresVideoRepository : VideoRepository {
             it[title] = video.title
             it[durationSeconds] = video.durationSeconds
             it[thumbnailPath] = video.thumbnailPath
+            it[fps] = video.fps
+            it[resolution] = video.resolution
         }
     }
 
@@ -43,6 +45,8 @@ class PostgresVideoRepository : VideoRepository {
             command.status?.let { statement[status] = it.name }
             command.durationSeconds?.let { statement[durationSeconds] = it.toInt() }
             command.thumbnailPath?.let { statement[thumbnailPath] = it }
+            command.fps?.let { statement[fps] = it }
+            command.resolution?.let { statement[resolution] = it }
             statement[updatedAt] = nowUTC()
         }
     }
@@ -65,6 +69,9 @@ class PostgresVideoRepository : VideoRepository {
 
     // маппинг строки БД в доменную модель
     private fun toDomainModel(row: ResultRow): Video {
+        val dbStatus = row[VideoTable.status]
+        val status = VideoStatus.entries.find { it.name == dbStatus } ?: VideoStatus.UNKNOWN
+
         return Video(
             id = row[id],
             path = row[VideoTable.s3Path],
@@ -72,8 +79,10 @@ class PostgresVideoRepository : VideoRepository {
             thumbnailPath = row[VideoTable.thumbnailPath],
             durationSeconds = row[VideoTable.durationSeconds],
             createdAt = row[VideoTable.createdAt],
-            status = VideoStatus.valueOf(row[VideoTable.status]),
+            status = status,
             updatedAt = row[VideoTable.updatedAt],
+            fps = row[VideoTable.fps],
+            resolution = row[VideoTable.resolution],
         )
     }
 }

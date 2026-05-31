@@ -9,18 +9,18 @@ import java.util.UUID
 
 class GetVideoStreamUrlUseCase(
     private val videoRepository: VideoRepository,
-    private val videoStorage: VideoStorage
+    private val videoStorage: VideoStorage,
+    private val externalUrl: String
 ) {
     suspend operator fun invoke(id: UUID): String {
         val video = videoRepository.getById(id) ?: throw VideoNotFoundException(id)
 
         if (video.status != VideoStatus.READY) {
-            throw VideoNotReadyException(id, video.status?: VideoStatus.UNKNOWN)
+            throw VideoNotReadyException(id, video.status ?: VideoStatus.UNKNOWN)
         }
 
         val url = videoStorage.getPresignedUrl(video.path)
 
-        // Вроде для mvp норм
-        return url.replace("http://minio:9000", "http://localhost:9000")
+        return url.replace("http://minio:9000", externalUrl)
     }
 }

@@ -6,6 +6,8 @@ import com.v39a.omni.core.util.videoId
 import com.v39a.omni.feature.video.api.dto.StreamUrlResponse
 import com.v39a.omni.feature.video.api.dto.UpdateVideoRequest
 import com.v39a.omni.feature.video.api.dto.UploadResponse
+import com.v39a.omni.feature.video.api.dto.SearchResultItem
+import com.v39a.omni.feature.video.api.dto.SearchResultSegment
 import com.v39a.omni.feature.video.api.dto.toResponseDTO
 import com.v39a.omni.feature.video.api.dto.toResponseDTOList
 import com.v39a.omni.feature.video.domain.command.UpdateVideoMetadataCommand
@@ -16,8 +18,6 @@ import io.ktor.server.request.*
 import io.ktor.server.response.respond
 import io.ktor.server.routing.*
 import io.ktor.utils.io.jvm.javaio.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import org.koin.ktor.ext.inject
 
 import org.slf4j.LoggerFactory
@@ -29,13 +29,30 @@ fun Route.videoRoutes() {
     route("/api/v1") {
         route("/videos") {
 
-            get{
+            get {
                 call.respond(videoUseCases.getAll().toResponseDTOList())
             }
             get("/search") {
                 val query = call.request.queryParameters["query"] ?: ""
-                val searchResults = videoUseCases.search(query)
-                call.respond(searchResults)
+                val searchResults = videoUseCases.search(query).map { item ->
+                    SearchResultItem(
+                        video_id = item.video.id.toString(),
+                        title = item.video.title,
+                        thumbnail_url = item.thumbnailUrl,
+                        duration = item.video.durationSeconds,
+                        created_date = item.video.createdAt.toString(),
+                        upload_date = item.video.updatedAt.toString(),
+                        score = item.score,
+                        segments = item.segments.map { segment ->
+                            SearchResultSegment(
+                                text_snippet = segment.textSnippet,
+                                start_time = segment.startTime,
+                                end_time = segment.endTime
+                            )
+                        }
+                    )
+                }
+                call.respond(HttpStatusCode.OK, searchResults)
             }
 
             // POST /upload
@@ -47,18 +64,16 @@ fun Route.videoRoutes() {
                 val fileName = parsedData.filePart.originalFileName ?: "unknown.mp4"
                 val contentType = parsedData.filePart.contentType?.toString() ?: "video/mp4"
 
-                val video = withContext(Dispatchers.IO) {
-                    parsedData.filePart.provider().toInputStream().use { inputStream ->
-                        val command = UploadVideoCommand(
-                            fileName = fileName,
-                            contentType = contentType,
-                            title = parsedData.title,
-                            durationSeconds = parsedData.durationSeconds,
-                            thumbnailPath = parsedData.thumbnailPath,
-                            contentStream = inputStream
-                        )
-                        videoUseCases.upload.execute(command)
-                    }
+                val video = parsedData.filePart.provider().toInputStream().use { inputStream ->
+                    val command = UploadVideoCommand(
+                        fileName = fileName,
+                        contentType = contentType,
+                        title = parsedData.title,
+                        durationSeconds = parsedData.durationSeconds,
+                        thumbnailPath = parsedData.thumbnailPath,
+                        contentStream = inputStream
+                    )
+                    videoUseCases.upload.execute(command)
                 }
 
                 parsedData.filePart.dispose()
@@ -83,13 +98,14 @@ fun Route.videoRoutes() {
 
         }
 
-        route("/api/v1/internal/videos") {
+        route("/internal/videos") {
             patch("/{id}") {
                 call.requireInternalSecret()
 
                 val request = call.receive<UpdateVideoRequest>()
 
-                if (request.status == null && request.durationSeconds == null && request.thumbnailPath == null) {
+                if (request.status == null && request.durationSeconds == null &&
+                    request.thumbnailPath == null && request.fps == null && request.resolution == null) {
                     call.respond(HttpStatusCode.BadRequest, mapOf("error" to "No fields to update"))
                     return@patch
                 }
@@ -97,7 +113,9 @@ fun Route.videoRoutes() {
                 val command = UpdateVideoMetadataCommand(
                     status = request.status,
                     durationSeconds = request.durationSeconds,
-                    thumbnailPath = request.thumbnailPath
+                    thumbnailPath = request.thumbnailPath,
+                    fps = request.fps,
+                    resolution = request.resolution
                 )
                 videoUseCases.patchMetadata.execute(call.videoId, command)
 

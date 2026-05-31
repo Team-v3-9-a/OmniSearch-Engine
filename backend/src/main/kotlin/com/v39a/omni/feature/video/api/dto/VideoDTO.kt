@@ -11,6 +11,8 @@ data class VideoResponseDTO(
     val status: String,
     val createdAt: String,
     val updatedAt: String,
+    val fps: Double? = null,
+    val resolution: String? = null
 )
 
 fun Video.toResponseDTO(): VideoResponseDTO {
@@ -19,7 +21,9 @@ fun Video.toResponseDTO(): VideoResponseDTO {
         title = this.title,
         status = this.status?.name ?: VideoStatus.ERROR.name,
         createdAt = this.createdAt.toString(),
-        updatedAt = this.updatedAt.toString()
+        updatedAt = this.updatedAt.toString(),
+        fps = this.fps,
+        resolution = this.resolution
     )
 }
 
