@@ -43,7 +43,7 @@ def process_audio_task(
 
 def _send_status_callback(video_id: str, payload: dict):
     backend_url = os.getenv("BACKEND_URL", "http://backend:8000")
-    url = f"{backend_url}/api/v1/internal/videos/{video_id}/status"
+    url = f"{backend_url}/api/v1/internal/videos/{video_id}"
     for attempt in range(1, 4):
         try:
             with httpx.Client(timeout=10.0) as client:
