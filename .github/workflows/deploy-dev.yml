@@ -16,18 +16,20 @@ jobs:
     steps:
       - name: Pull latest code
         run: |
-          cd ~/omnisearch/dev
+          cd /home/omnisearch/dev/OmniSearch-Engine
           git fetch origin preprod
           git checkout preprod
           git reset --hard origin/preprod
 
       - name: Build and restart containers
         run: |
-          cd ~/omnisearch/dev
-          docker compose -f docker-compose.dev.yml up -d --build --remove-orphans
+          cd /home/omnisearch/dev/OmniSearch-Engine
+          docker compose -f docker-compose.dev.yml --env-file .env.dev up -d --build --remove-orphans
 
       - name: Cleanup old images
         run: docker image prune -f
 
       - name: Show running containers
-        run: docker compose -f docker-compose.dev.yml -p omnisearch-dev ps
+        run: |
+          cd /home/omnisearch/dev/OmniSearch-Engine
+          docker compose -f docker-compose.dev.yml --env-file .env.dev -p omnisearch-dev ps
