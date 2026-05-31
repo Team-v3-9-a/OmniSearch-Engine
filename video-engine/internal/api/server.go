@@ -9,12 +9,19 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"time"
 
 	"omnisearch/video-engine/internal/ml"
 	"omnisearch/video-engine/internal/pipeline"
 	"omnisearch/video-engine/internal/s3"
 )
+
+var safeVideoIDRegex = regexp.MustCompile(`^[a-zA-Z0-9_\-]+$`)
+
+func isValidVideoID(id string) bool {
+	return safeVideoIDRegex.MatchString(id)
+}
 
 type Server struct {
 	s3Client *s3.Client
@@ -89,6 +96,11 @@ func (s *Server) handleProcess(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !isValidVideoID(req.VideoID) {
+		http.Error(w, "invalid video_id format", http.StatusBadRequest)
+		return
+	}
+
 	// Отвечаем 202 Accepted и запускаем асинхронную обработку
 	w.WriteHeader(http.StatusAccepted)
 	w.Write([]byte(`{"message": "Processing started"}`))
@@ -104,7 +116,7 @@ func (s *Server) processVideo(videoID, s3Path string) {
 		baseDir = "/app/shared_media"
 	}
 
-	workDir := filepath.Join(baseDir, videoID)
+	workDir := filepath.Join(baseDir, fmt.Sprintf("%s_%d", videoID, time.Now().UnixNano()))
 	os.MkdirAll(workDir, 0755)
 	
 	// В случае успеха удаляем локальные файлы, можно и при ошибке
@@ -127,7 +139,7 @@ func (s *Server) processVideo(videoID, s3Path string) {
 	}
 
 	// 2. Локальный процессинг (audio + frames)
-	duration, err := pipeline.Process(localVideoPath, outAudioPath, outFramesDir)
+	duration, err := pipeline.Process(ctx, localVideoPath, outAudioPath, outFramesDir)
 	if err != nil {
 		log.Printf("Ошибка обработки видео %s: %v", videoID, err)
 		s.sendCallback(videoID, "ERROR", 0, "")
@@ -193,7 +205,9 @@ func (s *Server) sendCallback(videoID, status string, duration float64, thumbnai
 		req.Header.Set("X-Internal-Secret", apiSecret)
 	}
 
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Printf("Ошибка отправки callback: %v", err)

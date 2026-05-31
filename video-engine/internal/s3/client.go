@@ -80,7 +80,7 @@ func (c *Client) UploadMedia(ctx context.Context, videoID, localAudioPath, local
 		
 		_, err := c.minioClient.FPutObject(ctx, c.bucket, s3FilePath, localFilePath, minio.PutObjectOptions{ContentType: "image/jpeg"})
 		if err != nil {
-			log.Printf("[S3] Предупреждение: ошибка загрузки кадра %s: %v", file.Name(), err)
+			return "", fmt.Errorf("ошибка загрузки кадра %s: %v", file.Name(), err)
 		}
 
 		// Загружаем первый кадр как thumbnail
@@ -88,11 +88,10 @@ func (c *Client) UploadMedia(ctx context.Context, videoID, localAudioPath, local
 			thumbS3Path := fmt.Sprintf("media/%s/thumbnail.jpg", videoID)
 			_, err := c.minioClient.FPutObject(ctx, c.bucket, thumbS3Path, localFilePath, minio.PutObjectOptions{ContentType: "image/jpeg"})
 			if err != nil {
-				log.Printf("[S3] Предупреждение: ошибка загрузки thumbnail %s: %v", file.Name(), err)
-			} else {
-				thumbnailPath = thumbS3Path
-				thumbnailUploaded = true
+				return "", fmt.Errorf("ошибка загрузки thumbnail %s: %v", file.Name(), err)
 			}
+			thumbnailPath = thumbS3Path
+			thumbnailUploaded = true
 		}
 	}
 
