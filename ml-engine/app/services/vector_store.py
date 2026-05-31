@@ -41,7 +41,7 @@ class QdrantService:
         return len(points)
 
     # Поиск видео по эмбеддингу
-    def search(self, query_embedding: list, top_k: int = 5):
+    def search(self, query_embedding: list, top_k: int = 10):
         search_result = self.client.query_points(
             collection_name=self.collection_name,
             query=query_embedding,
