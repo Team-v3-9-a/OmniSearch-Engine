@@ -100,24 +100,11 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Cache Docker layers
-        uses: actions/cache@v4
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-
-
       - name: Build Docker images using Buildx Bake
         env:
           BUILDX_BAKE_ENTITLEMENTS_FS: 0
         run: |
           cp .env.example .env
           docker buildx bake -f docker-compose.yml \
-            --set "*.cache-from=type=local,src=/tmp/.buildx-cache" \
-            --set "*.cache-to=type=local,dest=/tmp/.buildx-cache-new,mode=max"
-            
-      - name: Move cache (prevent infinite growth)
-        run: |
-          rm -rf /tmp/.buildx-cache
-          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+            --set "*.cache-from=type=gha" \
+            --set "*.cache-to=type=gha,mode=max"
