@@ -39,6 +39,7 @@ const SearchResultsPage = () => {
               <VideoSkeleton />
               <VideoSkeleton />
               <VideoSkeleton />
+              <VideoSkeleton />
             </>
           )
         }
