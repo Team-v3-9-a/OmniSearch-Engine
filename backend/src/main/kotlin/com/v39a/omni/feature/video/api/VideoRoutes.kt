@@ -3,23 +3,15 @@ package com.v39a.omni.feature.video.api
 import com.v39a.omni.core.util.receiveVideoMultipart
 import com.v39a.omni.core.util.requireInternalSecret
 import com.v39a.omni.core.util.videoId
-import com.v39a.omni.feature.video.api.dto.StreamUrlResponse
-import com.v39a.omni.feature.video.api.dto.UpdateVideoRequest
-import com.v39a.omni.feature.video.api.dto.UploadResponse
-import com.v39a.omni.feature.video.api.dto.SearchResultItem
-import com.v39a.omni.feature.video.api.dto.SearchResultSegment
-import com.v39a.omni.feature.video.api.dto.toResponseDTO
-import com.v39a.omni.feature.video.api.dto.toResponseDTOList
+import com.v39a.omni.feature.video.api.dto.*
 import com.v39a.omni.feature.video.domain.command.UpdateVideoMetadataCommand
 import com.v39a.omni.feature.video.domain.usecase.UploadVideoCommand
 import com.v39a.omni.feature.video.domain.usecase.VideoUseCases
 import io.ktor.http.*
 import io.ktor.server.request.*
-import io.ktor.server.response.respond
+import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import io.ktor.utils.io.jvm.javaio.*
 import org.koin.ktor.ext.inject
-
 import org.slf4j.LoggerFactory
 
 fun Route.videoRoutes() {
@@ -61,22 +53,24 @@ fun Route.videoRoutes() {
 
                 val parsedData = call.receiveVideoMultipart()
 
-                val fileName = parsedData.filePart.originalFileName ?: "unknown.mp4"
-                val contentType = parsedData.filePart.contentType?.toString() ?: "video/mp4"
+                val fileName = parsedData.fileName
+                val contentType = parsedData.contentType
 
-                val video = parsedData.filePart.provider().toInputStream().use { inputStream ->
-                    val command = UploadVideoCommand(
-                        fileName = fileName,
-                        contentType = contentType,
-                        title = parsedData.title,
-                        durationSeconds = parsedData.durationSeconds,
-                        thumbnailPath = parsedData.thumbnailPath,
-                        contentStream = inputStream
-                    )
-                    videoUseCases.upload.execute(command)
+                val video = try {
+                    parsedData.tempFile.inputStream().use { inputStream ->
+                        val command = UploadVideoCommand(
+                            fileName = fileName,
+                            contentType = contentType,
+                            title = parsedData.title,
+                            durationSeconds = parsedData.durationSeconds,
+                            thumbnailPath = parsedData.thumbnailPath,
+                            contentStream = inputStream
+                        )
+                        videoUseCases.upload.execute(command)
+                    }
+                } finally {
+                    parsedData.tempFile.delete()
                 }
-
-                parsedData.filePart.dispose()
 
                 call.respond(
                     HttpStatusCode.Accepted,
