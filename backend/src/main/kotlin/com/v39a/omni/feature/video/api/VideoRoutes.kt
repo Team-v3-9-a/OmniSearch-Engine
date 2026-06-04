@@ -106,6 +106,7 @@ fun Route.videoRoutes() {
 
                 val command = UpdateVideoMetadataCommand(
                     status = request.status,
+                    error = request.error,
                     durationSeconds = request.durationSeconds,
                     thumbnailPath = request.thumbnailPath,
                     fps = request.fps,
