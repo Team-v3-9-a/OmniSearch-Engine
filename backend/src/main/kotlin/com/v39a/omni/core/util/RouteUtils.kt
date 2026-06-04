@@ -9,6 +9,9 @@ import io.ktor.server.request.header
 import io.ktor.server.request.receiveMultipart
 import java.io.File
 import io.ktor.utils.io.jvm.javaio.toInputStream
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.util.UUID
 
 val ApplicationCall.videoId: UUID
     get() = UUID.fromString(parameters["id"] ?: throw IllegalArgumentException("Missing ID parameter"))
@@ -48,7 +51,9 @@ suspend fun ApplicationCall.receiveVideoMultipart(): ParsedUploadRequest {
                 fileName = part.originalFileName ?: "unknown.mp4"
                 contentType = part.contentType?.toString() ?: "video/mp4"
                 
-                val file = File.createTempFile("upload-", ".tmp")
+                val file = withContext(Dispatchers.IO) {
+                    File.createTempFile("upload-", ".tmp")
+                }
                 part.provider().toInputStream().use { input ->
                     file.outputStream().use { output ->
                         input.copyTo(output)
