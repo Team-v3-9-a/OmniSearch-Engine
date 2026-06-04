@@ -5,6 +5,9 @@ ktor:
     deployment:
         port: 8080
 
+http:
+    allowedOrigins: ${CORS_ALLOWED_ORIGINS}
+
 storage:
     driverClassName: "org.postgresql.Driver"
     jdbcUrl: ${DB_URL}
