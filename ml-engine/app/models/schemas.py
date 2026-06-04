@@ -5,7 +5,8 @@ from typing import List, Optional
 class AudioProcessRequest(BaseModel):
     video_id: str
     bucket_name: str = "video"
-    object_key: str
+    audio_key: str
+    frames_prefix: str
 
 # Валидация данных для запроса на поиск
 class SearchRequest(BaseModel):
