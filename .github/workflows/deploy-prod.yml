@@ -25,7 +25,7 @@ jobs:
         run: |
           cd /home/omnisearch/omnisearch/prod/OmniSearch-Engine
           docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build --remove-orphans
-          docker compose -f docker-compose.prod.yml --env-file .env.prod restart nginx
+          docker compose -f docker-compose.prod.yml --env-file .env.prod restart gateway
 
       - name: Cleanup old images
         run: docker image prune -f
