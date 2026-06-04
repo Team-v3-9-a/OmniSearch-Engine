@@ -7,7 +7,8 @@ import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.formFieldLimit
 import io.ktor.server.request.header
 import io.ktor.server.request.receiveMultipart
-import java.util.UUID
+import java.io.File
+import io.ktor.utils.io.jvm.javaio.toInputStream
 
 val ApplicationCall.videoId: UUID
     get() = UUID.fromString(parameters["id"] ?: throw IllegalArgumentException("Missing ID parameter"))
@@ -27,7 +28,9 @@ suspend fun ApplicationCall.receiveVideoMultipart(): ParsedUploadRequest {
     var title = ""
     var durationSeconds = 0
     var thumbnailPath = ""
-    var filePart: PartData.FileItem? = null
+    var tempFile: File? = null
+    var fileName = "unknown.mp4"
+    var contentType = "video/mp4"
 
     val multipart = receiveMultipart()
     while (true) {
@@ -42,14 +45,23 @@ suspend fun ApplicationCall.receiveVideoMultipart(): ParsedUploadRequest {
                 part.dispose()
             }
             is PartData.FileItem -> {
-                // Do not dispose now. The caller (VideoRoutes) handles the lifecycle of this part.
-                filePart = part
+                fileName = part.originalFileName ?: "unknown.mp4"
+                contentType = part.contentType?.toString() ?: "video/mp4"
+                
+                val file = File.createTempFile("upload-", ".tmp")
+                part.provider().toInputStream().use { input ->
+                    file.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                tempFile = file
+                part.dispose()
             }
             else -> part.dispose()
         }
     }
 
-    return filePart?.let {
-        ParsedUploadRequest(title, durationSeconds, thumbnailPath, it)
+    return tempFile?.let {
+        ParsedUploadRequest(title, durationSeconds, thumbnailPath, fileName, contentType, it)
     } ?: throw IllegalArgumentException("File part is missing in the request")
 }

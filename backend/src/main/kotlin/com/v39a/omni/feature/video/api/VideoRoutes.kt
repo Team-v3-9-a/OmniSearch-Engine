@@ -61,22 +61,24 @@ fun Route.videoRoutes() {
 
                 val parsedData = call.receiveVideoMultipart()
 
-                val fileName = parsedData.filePart.originalFileName ?: "unknown.mp4"
-                val contentType = parsedData.filePart.contentType?.toString() ?: "video/mp4"
+                val fileName = parsedData.fileName
+                val contentType = parsedData.contentType
 
-                val video = parsedData.filePart.provider().toInputStream().use { inputStream ->
-                    val command = UploadVideoCommand(
-                        fileName = fileName,
-                        contentType = contentType,
-                        title = parsedData.title,
-                        durationSeconds = parsedData.durationSeconds,
-                        thumbnailPath = parsedData.thumbnailPath,
-                        contentStream = inputStream
-                    )
-                    videoUseCases.upload.execute(command)
+                val video = try {
+                    parsedData.tempFile.inputStream().use { inputStream ->
+                        val command = UploadVideoCommand(
+                            fileName = fileName,
+                            contentType = contentType,
+                            title = parsedData.title,
+                            durationSeconds = parsedData.durationSeconds,
+                            thumbnailPath = parsedData.thumbnailPath,
+                            contentStream = inputStream
+                        )
+                        videoUseCases.upload.execute(command)
+                    }
+                } finally {
+                    parsedData.tempFile.delete()
                 }
-
-                parsedData.filePart.dispose()
 
                 call.respond(
                     HttpStatusCode.Accepted,
