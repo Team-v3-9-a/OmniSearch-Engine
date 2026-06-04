@@ -50,10 +50,7 @@ fun Route.videoRoutes() {
 
             // POST /upload
             post("/upload") {
-                //todo разобраться как его отключить или настроить иным образом, чтобы не было неявных лимитов
-                call.formFieldLimit = 500L * 1024 * 1024 * 1024
-
-                val multipart = call.receiveMultipart()
+                val multipart = call.receiveMultipart(formFieldLimit = 500L * 1024 * 1024 * 1024)
                 var uploadResponse: UploadResponse? = null
                 logger.info("received file upload")
                 var title = ""
