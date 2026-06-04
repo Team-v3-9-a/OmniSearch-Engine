@@ -33,6 +33,7 @@ func SampleFrames(ctx context.Context, inputPath, outputDir string, targetFPS in
 	defer img.Close()
 
 	frameCount, savedCount := 0, 0
+	segmentDuration := float64(frameSkip) / originalFPS
 
 	for {
 		select {
@@ -46,7 +47,14 @@ func SampleFrames(ctx context.Context, inputPath, outputDir string, targetFPS in
 		}
 
 		if frameCount%frameSkip == 0 {
-			fileName := fmt.Sprintf("frame_%04d.jpg", savedCount)
+			index := savedCount + 1
+			startTime := float64(savedCount) * segmentDuration
+			endTime := float64(savedCount+1) * segmentDuration
+			if endTime > duration {
+				endTime = duration
+			}
+
+			fileName := fmt.Sprintf("frame_%04d_%.2f_%.2f.jpg", index, startTime, endTime)
 			outPath := filepath.Join(outputDir, fileName)
 
 			if success := gocv.IMWrite(outPath, img); !success {
