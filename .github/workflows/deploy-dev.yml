@@ -2,7 +2,7 @@ name: Deploy Dev (Preprod)
 
 on:
   push:
-    branches: [fix/go-engine-processing-(ffmpeg-error)]
+    branches: [fix/go-engine-processing-ffmpeg-error]
 
 # Не запускать параллельно несколько деплоев dev
 concurrency:
@@ -17,9 +17,9 @@ jobs:
       - name: Pull latest code
         run: |
           cd /home/omnisearch/omnisearch/dev/OmniSearch-Engine
-          git fetch origin fix/go-engine-processing-(ffmpeg-error)
-          git checkout fix/go-engine-processing-(ffmpeg-error)
-          git reset --hard origin/fix/go-engine-processing-(ffmpeg-error)
+          git fetch origin fix/go-engine-processing-ffmpeg-error
+          git checkout fix/go-engine-processing-ffmpeg-error
+          git reset --hard origin/fix/go-engine-processing-ffmpeg-error
 
       - name: Build and restart containers
         run: |
