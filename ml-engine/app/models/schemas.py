@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Literal
 
 # Валидация данных для запроса на обработку аудио
 class AudioProcessRequest(BaseModel):
@@ -20,6 +20,7 @@ class SearchResultItem(BaseModel):
     start_time: Optional[float] = None
     end_time: Optional[float] = None
     text_snippet: Optional[str] = None
+    source: Literal["audio", "frames"] = "audio"
 
 class SearchResponse(BaseModel):
     results: List[SearchResultItem]

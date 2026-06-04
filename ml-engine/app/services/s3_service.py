@@ -19,3 +19,14 @@ class S3Service:
         except ClientError as e:
             print(f"Error downloading from S3: {e}")
             raise Exception(f"Failed to download {object_key} from {bucket_name}")
+
+    def list_objects(self, bucket_name: str, prefix: str) -> list[str]:
+        """Возвращает список ключей объектов в бакете по заданному prefix."""
+        try:
+            response = self.s3.list_objects_v2(Bucket=bucket_name, Prefix=prefix)
+            if "Contents" not in response:
+                return []
+            return [obj["Key"] for obj in response["Contents"]]
+        except ClientError as e:
+            print(f"Error listing objects in S3: {e}")
+            raise Exception(f"Failed to list objects with prefix {prefix} in {bucket_name}")
