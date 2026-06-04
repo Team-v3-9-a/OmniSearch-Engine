@@ -29,8 +29,9 @@ class MinioVideoStorage(
                         .build()
                 )
 
-                // Путь, по которому файл можно будет идентифицировать.
-                return@withContext "$bucket/$fileName"
+                // Путь, по которому файл можно будет идентифицировать (без bucket prefix —
+                // bucket указывается отдельно при обращении к S3).
+                return@withContext fileName
             } catch (e: Exception) {
                 throw RuntimeException("MinIO upload failed: ${e.message}", e)
             } finally {
