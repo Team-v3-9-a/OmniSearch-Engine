@@ -16,7 +16,8 @@ router = APIRouter()
 
 def process_audio_task(
     video_id: str, 
-    object_key: str, 
+    audio_key: str, 
+    frames_prefix: str,
     bucket_name: str,
     ml: MLService, 
     qdrant: QdrantService, 
@@ -24,7 +25,7 @@ def process_audio_task(
 ):
     temp_local_path = f"/tmp/{uuid.uuid4()}_audio.wav"
     try:
-        s3.download_file(bucket_name=bucket_name, object_key=object_key, local_path=temp_local_path)
+        s3.download_file(bucket_name=bucket_name, object_key=audio_key, local_path=temp_local_path)
         chunks = ml.process_audio_to_chunks(temp_local_path)
 
         vectors = [ml.get_embedding(chunk["text"], is_query=False) for chunk in chunks]
@@ -70,7 +71,8 @@ async def process_audio(
         asyncio.to_thread,
         process_audio_task,
         request.video_id,
-        request.object_key,
+        request.audio_key,
+        request.frames_prefix,
         request.bucket_name,
         ml_service,
         qdrant_service,
