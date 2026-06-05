@@ -17,10 +17,7 @@ const SearchResultsPage = () => {
     enabled: !!query
   })
 
-
   const showLoading = isLoading || isFetched;
-
-
   const isEmpty = !showLoading && !data;
 
   return (
@@ -57,6 +54,15 @@ const SearchResultsPage = () => {
               key={`${videoItem.video_id}-${index}`}
               {...videoItem}
             />
+          ))
+        }
+
+        {
+          data?.map((videoItem: SearchResultItem, index) => (
+              <VideoCard
+                  key={`${videoItem.video_id}-${index}`}
+                  {...videoItem}
+              />
           ))
         }
 
