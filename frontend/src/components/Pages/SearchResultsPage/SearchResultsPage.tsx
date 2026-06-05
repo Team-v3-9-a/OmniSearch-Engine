@@ -11,14 +11,14 @@ const SearchResultsPage = () => {
 
   const query = searchParams.get("query") || '';
 
-  const { data, isLoading, isFetched, error } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['results', query],
     queryFn: () => searchVideos(query),
     enabled: !!query
   })
 
-  const showLoading = isLoading || isFetched || !data;
-  const isEmpty = !showLoading && !data;
+  const showLoading = isLoading;
+  const isEmpty = !showLoading && !!data && data.length === 0;
 
   return (
     <section className={styles.mainContainer}>
