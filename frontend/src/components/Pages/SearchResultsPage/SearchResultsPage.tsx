@@ -21,7 +21,7 @@ const SearchResultsPage = () => {
 
   const showLoading = isLoading || isFetched;
 
-  const isEmpty = !showLoading && data && data.length === 0;
+  const isEmpty = !showLoading && !data;
 
   return (
     <section className={styles.mainContainer}>
