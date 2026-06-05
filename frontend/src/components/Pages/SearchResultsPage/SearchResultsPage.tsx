@@ -14,7 +14,6 @@ const SearchResultsPage = () => {
   const { data, isLoading, isFetched, error } = useQuery({
     queryKey: ['results', query],
     queryFn: () => searchVideos(query),
-    // initialData: mockSearchResults,
     enabled: !!query
   })
 
