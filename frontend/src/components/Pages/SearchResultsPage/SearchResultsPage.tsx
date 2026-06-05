@@ -20,6 +20,8 @@ const SearchResultsPage = () => {
   const showLoading = isLoading || isFetched;
   const isEmpty = !showLoading && !data;
 
+  console.log(isEmpty, showLoading, data);
+
   return (
     <section className={styles.mainContainer}>
       <h3 className={styles.title}>
