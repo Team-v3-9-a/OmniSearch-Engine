@@ -61,42 +61,35 @@ graph TB
 ### Компонентная диаграмма
 
 ```mermaid
-componentDiagram
-    [Frontend] --> [Backend API] : REST API
-    [Backend API] --> [PostgreSQL] : Exposed ORM
-    [Backend API] --> [MinIO S3] : MinIO SDK
-    [Backend API] --> [Video Engine] : HTTP Callback
-    [Backend API] --> [ML Engine] : HTTP Search
+flowchart LR
+    subgraph Client["Client Layer"]
+        FE[Frontend<br/>React 19 + TypeScript]
+    end
     
-    [Video Engine] --> [MinIO S3] : Download/Upload
-    [Video Engine] --> [ML Engine] : Process Trigger
+    subgraph API["API Layer"]
+        BE[Backend API<br/>Ktor + Kotlin]
+    end
     
-    [ML Engine] --> [MinIO S3] : Download Audio/Frames
-    [ML Engine] --> [Qdrant] : Vector Upsert/Search
+    subgraph Services["Services Layer"]
+        VE[Video Engine<br/>Go 1.25]
+        ML[ML Engine<br/>Python 3.11]
+    end
     
-    note right of Frontend
-        React 19
-        TypeScript
-        Zustand
-    end note
+    subgraph Data["Data Layer"]
+        PG[(PostgreSQL<br/>Metadata)]
+        S3[(MinIO S3<br/>Storage)]
+        QD[(Qdrant<br/>Vectors)]
+    end
     
-    note right of Backend API
-        Kotlin
-        Ktor
-        Coroutines
-    end note
-    
-    note right of Video Engine
-        Go 1.25
-        FFmpeg
-        GoCV
-    end note
-    
-    note right of ML Engine
-        Python 3.11
-        Whisper
-        CLIP
-    end note
+    FE -->|REST API| BE
+    BE -->|JDBC| PG
+    BE -->|S3 SDK| S3
+    BE -->|HTTP| VE
+    BE -->|HTTP| ML
+    VE -->|S3 SDK| S3
+    VE -->|HTTP| ML
+    ML -->|S3 SDK| S3
+    ML -->|gRPC| QD
 ```
 
 ### Пайплайн загрузки видео
