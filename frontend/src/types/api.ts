@@ -19,7 +19,7 @@ export interface SearchResultItem {
 }
 
 export interface VideoDetails {
-    streamUrl: string;
+    url: string;
 }
 
 export interface MyVideoItem {
