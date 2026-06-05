@@ -25,6 +25,7 @@ jobs:
         run: |
           cd /home/omnisearch/omnisearch/dev/OmniSearch-Engine
           docker compose -f docker-compose.dev.yml --env-file .env.dev up -d --build --remove-orphans
+          docker compose -f docker-compose.dev.yml --env-file .env.dev restart gateway
 
       - name: Cleanup old images
         run: docker image prune -f
@@ -32,4 +33,4 @@ jobs:
       - name: Show running containers
         run: |
           cd /home/omnisearch/omnisearch/dev/OmniSearch-Engine
-          docker compose -f docker-compose.dev.yml --env-file .env.dev -p omnisearch-dev ps
+          docker compose -f docker-compose.dev.yml --env-file .env.dev ps

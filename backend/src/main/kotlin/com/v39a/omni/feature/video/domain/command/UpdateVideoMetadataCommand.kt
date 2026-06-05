@@ -4,6 +4,7 @@ import com.v39a.omni.feature.video.domain.VideoStatus
 
 data class UpdateVideoMetadataCommand(
     val status: VideoStatus? = null,
+    val error: String? = null,
     val durationSeconds: Long? = null,
     val thumbnailPath: String? = null,
     val fps: Double? = null,
