@@ -2,9 +2,9 @@ package com.v39a.omni.plugins
 
 import com.v39a.omni.core.exceptions.InternalApiForbiddenException
 import com.v39a.omni.core.exceptions.VideoEngineUnavailableException
-import com.v39a.omni.core.exceptions.VideoNotFoundException
 import com.v39a.omni.core.exceptions.VideoNotReadyException
 import com.v39a.omni.core.exceptions.MLEngineUnavailableException
+import com.v39a.omni.core.exceptions.VideoNotFoundException
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
@@ -55,7 +55,7 @@ fun Application.configureExceptions() {
             call.respond(HttpStatusCode.ServiceUnavailable, mapOf("error" to (cause.message ?: "Search service temporarily unavailable")))
         }
 
-        exception<IllegalArgumentException> { call, cause ->
+        exception<IllegalArgumentException> { call, _ ->
             call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid UUID format"))
         }
 
