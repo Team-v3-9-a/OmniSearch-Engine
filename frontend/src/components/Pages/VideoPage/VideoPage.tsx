@@ -46,7 +46,7 @@ export const VideoPage = () => {
         <div className={styles.playerWrapper}>
           <video
               ref={videoRef}
-              src={data?.streamUrl}
+              src={data?.url}
               controls
               muted
               crossOrigin="anonymous"
