@@ -209,5 +209,6 @@ async def search(
 
     # Сортировка по score (лучшие сверху)
     results.sort(key=lambda r: r.score, reverse=True)
+    print(results)
 
     return SearchResponse(results=results)

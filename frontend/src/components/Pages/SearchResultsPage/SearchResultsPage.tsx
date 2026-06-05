@@ -61,10 +61,10 @@ const SearchResultsPage = () => {
 
         {
           data?.map((videoItem: SearchResultItem, index) => (
-              <VideoCard
-                  key={`${videoItem.video_id}-${index}`}
-                  {...videoItem}
-              />
+            <VideoCard
+              key={`${videoItem.video_id}-${index}`}
+              {...videoItem}
+            />
           ))
         }
 
