@@ -4,7 +4,7 @@ from typing import List, Optional, Literal
 # Валидация данных для запроса на обработку аудио
 class AudioProcessRequest(BaseModel):
     video_id: str
-    bucket_name: str = "video"
+    bucket_name: str = "videos"
     audio_key: str
     frames_prefix: str
 
