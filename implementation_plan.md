@@ -85,8 +85,8 @@ flowchart LR
 - Путь `thumbnailPath` передаётся в callback к Backend
 
 **Подзадачи:**
-- [ ] Копировать первый кадр как thumbnail в `UploadMedia()`
-- [ ] Добавить `thumbnailPath` в callback payload
+- [x] Копировать первый кадр как thumbnail в `UploadMedia()`
+- [x] Добавить `thumbnailPath` в callback payload
 
 ---
 
@@ -100,8 +100,8 @@ flowchart LR
 - HTTP-сервер делает `Shutdown(ctx)` с таймаутом 30 секунд
 
 **Подзадачи:**
-- [ ] Signal handling в `main.go`
-- [ ] `http.Server.Shutdown()` вместо голого `ListenAndServe`
+- [x] Signal handling в `main.go`
+- [x] `http.Server.Shutdown()` вместо голого `ListenAndServe`
 
 ---
 

@@ -1,6 +1,6 @@
 package com.v39a.omni.feature.video.domain
 
-import com.v39a.omni.feature.video.domain.usecase.UpdateVideoMetadataCommand
+import com.v39a.omni.feature.video.domain.command.UpdateVideoMetadataCommand
 import java.util.UUID
 
 interface VideoRepository {
@@ -8,5 +8,6 @@ interface VideoRepository {
     suspend fun updateStatus(id: UUID, newStatus: VideoStatus)
     suspend fun getById(id: UUID): Video?
     suspend fun patchVideo(videoId: UUID, command: UpdateVideoMetadataCommand)
-
+    suspend fun getAll(): List<Video>
+    suspend fun getByIds(ids: Collection<UUID>): List<Video>
 }

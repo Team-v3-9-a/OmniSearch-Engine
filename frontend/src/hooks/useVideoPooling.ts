@@ -7,9 +7,8 @@ export const useVideoPooling = () => {
 
   useEffect(() => {
     const activeTask = Object.values(tasks).filter(
-        (task) => {
-          task.backendId && ['UPLOADED', 'PROCESSING_MEDIA', 'PROCESSING_ML'].includes(task.status)
-        }
+        (task) =>
+          !!task.backendId && ['UPLOADED', 'PROCESSING_MEDIA', 'PROCESSING_ML'].includes(task.status)
     )
 
     if (activeTask.length === 0) return
@@ -22,7 +21,7 @@ export const useVideoPooling = () => {
           const data = await getVideoStatus(task.backendId)
 
           if ( data.status !== task.status ) {
-            updateStatus(task.backendId, data.status, task.backendId)
+            updateStatus(task.localId, data.status, task.backendId)
           }
         } catch (e) {
           console.log(`Ошибка пуллинга статуса для видео ${task.backendId}:`, e)

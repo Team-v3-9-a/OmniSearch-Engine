@@ -16,7 +16,6 @@
 
     border-radius: var(--border);
 
-    background-color: var(--separator-color);
 }
 
 .searchIcon{
@@ -56,8 +55,16 @@
 
     gap: 10px;
 
-    &:hover{
+    transition: background-color 0.3s ease-in-out, opacity 0.15s ease-in-out;
+
+    @media (hover: hover) {
+        &:hover {
+            background-color: var(--button-hover-color);
+        }
+    }
+
+    &:active {
         background-color: var(--button-hover-color);
-        transition: background-color 0.3s ease-in-out;
+        opacity: 0.9;
     }
 }

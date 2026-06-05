@@ -1,9 +1,9 @@
-.header{
+.header {
     display: flex;
     flex-direction: row;
     justify-content: space-between;
 
-    padding: 16px 32px;
+    padding: 12px 24px;
     align-items: center;
 
     border-bottom: 1px solid var(--separator-color);
@@ -11,23 +11,53 @@
     background-color: var(--header-color);
 }
 
-.logo{
-    width: 48px;
-    height: 48px;
+.logo {
+    width: 32px;
+    height: 32px;
 }
 
-.logoText{
+.logoText {
     font-size: 20px;
-    margin: 0;
     color: var(--text-primary-color);
 }
 
-.containerLogo{
+.containerLogo {
     display: flex;
     flex-direction: row;
-    margin: 0 8px;
     align-items: center;
     gap: 10px;
-    text-underline: none;
     text-decoration: none;
+}
+
+.containerIcons {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+}
+
+.archive {
+    cursor: pointer;
+    padding: 4px;
+    width: 32px;
+    height: 32px;
+}
+
+.archive path {
+    stroke: var(--text-primary-color);
+}
+
+.archive:active {
+    transform-origin: center;
+    transform: scale(0.95);
+    transition: transform 0.1s ease-in-out;
+}
+
+@media (max-width: 600px) {
+    .header {
+        padding: 12px;
+    }
+    .containerIcons {
+        gap: 12px;
+    }
 }

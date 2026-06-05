@@ -1,5 +1,9 @@
 FROM pytorch/pytorch:2.11.0-cuda12.8-cudnn9-runtime
 
+# Зеркала Яндекса
+RUN sed -i 's|http://archive.ubuntu.com/ubuntu/|http://mirror.yandex.ru/ubuntu/|g' /etc/apt/sources.list.d/ubuntu.sources && \
+    sed -i 's|http://security.ubuntu.com/ubuntu/|http://mirror.yandex.ru/ubuntu/|g' /etc/apt/sources.list.d/ubuntu.sources
+
 # ffmpeg + wget (нужен для healthcheck в docker-compose)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
