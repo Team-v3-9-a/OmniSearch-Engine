@@ -20,6 +20,7 @@ const SearchResultsPage = () => {
 
   const showLoading = isLoading || isFetched;
 
+
   const isEmpty = !showLoading && !data;
 
   return (
