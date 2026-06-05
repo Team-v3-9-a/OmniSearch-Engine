@@ -1,32 +1,33 @@
-.mainPage{
+.mainPage {
   display: flex;
-  flex-grow: 1;
   flex-direction: column;
-  align-items: center;
   justify-content: center;
+  align-items: center;
+  flex-grow: 1;
+  padding: 16px 15%;
+  width: 100%;
+  position: relative;
 }
 
-.searchContainer{
+.searchContainer {
   display: flex;
-  padding-top: 120px;
   flex-direction: column;
   align-items: center;
   gap: 10px;
 }
 
-h1{
+.searchContainer h1 {
   color: var(--text-primary-color);
-  margin: 0;
   font-size: 46px;
+  width: 100%;
 }
 
-h2{
+.searchContainer h2 {
   color: var(--text-primary-color);
-  margin: 0;
   font-size: 34px;
 }
 
-.blueText{
+.blueText {
   color: var(--accent-color);
 }
 
@@ -36,3 +37,85 @@ h2{
   gap: 12px
 }
 
+.notification {
+  position: absolute;
+  top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border: 1px solid var(--separator-color);
+  border-radius: 16px;
+  padding: 16px;
+  max-width: 480px;
+  width: calc(100% - 48px);
+  animation: slideDownFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  z-index: 99;
+}
+
+@keyframes slideDownFade {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.notificationIconWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.notificationContent {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+}
+
+.notificationTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary-color);
+  margin: 0;
+}
+
+.notificationMessage {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-secondary-color);
+  margin: 0;
+}
+
+.notificationLink {
+  color: var(--accent-color);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .mainPage {
+    padding: 16px;
+  }
+
+  .searchContainer h1 {
+    font-size: 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .searchContainer h2 {
+    font-size: 20px;
+  }
+
+  .uploadContainer {
+    flex-direction: column;
+    gap: 12px;
+  }
+}

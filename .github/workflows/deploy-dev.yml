@@ -1,0 +1,36 @@
+name: Deploy Dev (Preprod)
+
+on:
+  push:
+    branches: [preprod]
+
+# Не запускать параллельно несколько деплоев dev
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy to Dev
+    runs-on: self-hosted
+    steps:
+      - name: Pull latest code
+        run: |
+          cd /home/omnisearch/omnisearch/dev/OmniSearch-Engine
+          git fetch origin preprod
+          git checkout preprod
+          git reset --hard origin/preprod
+
+      - name: Build and restart containers
+        run: |
+          cd /home/omnisearch/omnisearch/dev/OmniSearch-Engine
+          docker compose -f docker-compose.dev.yml --env-file .env.dev up -d --build --remove-orphans
+          docker compose -f docker-compose.dev.yml --env-file .env.dev restart gateway
+
+      - name: Cleanup old images
+        run: docker image prune -f
+
+      - name: Show running containers
+        run: |
+          cd /home/omnisearch/omnisearch/dev/OmniSearch-Engine
+          docker compose -f docker-compose.dev.yml --env-file .env.dev ps

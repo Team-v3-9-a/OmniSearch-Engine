@@ -1,1 +1,1 @@
-export { default as VideoPage } from './VideoPage.tsx'
+export { VideoPage } from './VideoPage.tsx'

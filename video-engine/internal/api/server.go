@@ -9,16 +9,25 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
+	"time"
 
 	"omnisearch/video-engine/internal/ml"
 	"omnisearch/video-engine/internal/pipeline"
 	"omnisearch/video-engine/internal/s3"
 )
 
+var safeVideoIDRegex = regexp.MustCompile(`^[a-zA-Z0-9_\-]+$`)
+
+func isValidVideoID(id string) bool {
+	return safeVideoIDRegex.MatchString(id)
+}
+
 type Server struct {
 	s3Client *s3.Client
 	mlClient *ml.Client
 	mux      *http.ServeMux
+	httpSrv  *http.Server
 }
 
 func NewServer() (*Server, error) {
@@ -40,9 +49,29 @@ func NewServer() (*Server, error) {
 	return s, nil
 }
 
-func (s *Server) Start(port string) error {
+func (s *Server) Start(ctx context.Context, port string) error {
 	log.Printf("Запуск сервера на порту %s", port)
-	return http.ListenAndServe(port, s.mux)
+	s.httpSrv = &http.Server{
+		Addr:    port,
+		Handler: s.mux,
+	}
+
+	go func() {
+		<-ctx.Done()
+		log.Println("Получен сигнал завершения работы, останавливаем HTTP сервер...")
+
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		if err := s.httpSrv.Shutdown(shutdownCtx); err != nil {
+			log.Printf("Ошибка при graceful shutdown: %v", err)
+		}
+	}()
+
+	if err := s.httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		return err
+	}
+	return nil
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
@@ -67,6 +96,11 @@ func (s *Server) handleProcess(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !isValidVideoID(req.VideoID) {
+		http.Error(w, "invalid video_id format", http.StatusBadRequest)
+		return
+	}
+
 	// Отвечаем 202 Accepted и запускаем асинхронную обработку
 	w.WriteHeader(http.StatusAccepted)
 	w.Write([]byte(`{"message": "Processing started"}`))
@@ -82,7 +116,7 @@ func (s *Server) processVideo(videoID, s3Path string) {
 		baseDir = "/app/shared_media"
 	}
 
-	workDir := filepath.Join(baseDir, videoID)
+	workDir := filepath.Join(baseDir, fmt.Sprintf("%s_%d", videoID, time.Now().UnixNano()))
 	os.MkdirAll(workDir, 0755)
 	
 	// В случае успеха удаляем локальные файлы, можно и при ошибке
@@ -100,41 +134,42 @@ func (s *Server) processVideo(videoID, s3Path string) {
 	err := s.s3Client.DownloadVideo(ctx, s3Path, localVideoPath)
 	if err != nil {
 		log.Printf("Ошибка скачивания видео %s: %v", videoID, err)
-		s.sendCallback(videoID, "ERROR", 0)
+		s.sendCallback(videoID, "ERROR", 0, "")
 		return
 	}
 
 	// 2. Локальный процессинг (audio + frames)
-	duration, err := pipeline.Process(localVideoPath, outAudioPath, outFramesDir)
+	duration, err := pipeline.Process(ctx, localVideoPath, outAudioPath, outFramesDir)
 	if err != nil {
 		log.Printf("Ошибка обработки видео %s: %v", videoID, err)
-		s.sendCallback(videoID, "ERROR", 0)
+		s.sendCallback(videoID, "ERROR", 0, "")
 		return
 	}
 
 	// 3. Загружаем результаты обратно в S3
-	err = s.s3Client.UploadMedia(ctx, videoID, outAudioPath, outFramesDir)
+	thumbnailPath, err := s.s3Client.UploadMedia(ctx, videoID, outAudioPath, outFramesDir)
 	if err != nil {
 		log.Printf("Ошибка загрузки результатов видео %s: %v", videoID, err)
-		s.sendCallback(videoID, "ERROR", 0)
+		s.sendCallback(videoID, "ERROR", 0, "")
 		return
 	}
 
 	// 4. Отправляем callback в Backend о начале ML-процессинга
 	log.Printf("Успешное завершение нарезки видео %s. Отправка callback...", videoID)
-	s.sendCallback(videoID, "PROCESSING_ML", duration)
+	s.sendCallback(videoID, "PROCESSING_ML", duration, thumbnailPath)
 
 	// 5. Запускаем ML Engine (транскрибация и векторизация)
-	audioObjectKey := fmt.Sprintf("media/%s/audio.wav", videoID)
-	err = s.mlClient.TriggerProcess(ctx, videoID, audioObjectKey)
+	audioKey := fmt.Sprintf("media/%s/audio.wav", videoID)
+	framesPrefix := fmt.Sprintf("media/%s/frames/", videoID)
+	err = s.mlClient.TriggerProcess(ctx, videoID, audioKey, framesPrefix)
 	if err != nil {
 		log.Printf("Критическая ошибка: не удалось запустить ML Engine для видео %s: %v", videoID, err)
-		s.sendCallback(videoID, "ERROR", 0)
+		s.sendCallback(videoID, "ERROR", 0, "")
 		return
 	}
 }
 
-func (s *Server) sendCallback(videoID, status string, duration float64) {
+func (s *Server) sendCallback(videoID, status string, duration float64, thumbnailPath string) {
 	// Для вызова бекенда мы берем URL бекенда. Т.к. video-engine запускается в docker, backend это http://backend:8080
 	// Для тестов можно через env.
 	apiURL := os.Getenv("BACKEND_API_URL")
@@ -149,6 +184,9 @@ func (s *Server) sendCallback(videoID, status string, duration float64) {
 	}
 	if duration > 0 {
 		payload["durationSeconds"] = int(duration)
+	}
+	if thumbnailPath != "" {
+		payload["thumbnailPath"] = thumbnailPath
 	}
 
 	data, err := json.Marshal(payload)
@@ -168,7 +206,9 @@ func (s *Server) sendCallback(videoID, status string, duration float64) {
 		req.Header.Set("X-Internal-Secret", apiSecret)
 	}
 
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Printf("Ошибка отправки callback: %v", err)

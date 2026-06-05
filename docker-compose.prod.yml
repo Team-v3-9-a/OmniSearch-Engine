@@ -1,0 +1,278 @@
+name: omnisearch-prod
+
+services:
+  # ---- 0. Gateway (Nginx Reverse Proxy) ----
+  gateway:
+    image: nginx:alpine
+    container_name: omnisearch-gateway-prod
+    restart: always
+    ports:
+      - "3000:80"
+    volumes:
+      - ./nginx/gateway.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --spider -q http://127.0.0.1:80/ || exit 1" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+    networks:
+      - omnisearch-prod-network
+
+  # ---- 1. PostgreSQL ----
+  postgres:
+    image: postgres:15-alpine
+    container_name: omnisearch-postgres-prod
+    restart: always
+    env_file: [ .env.prod ]
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}" ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+    networks:
+      - omnisearch-prod-network
+
+  # ---- 2. MinIO (S3) ----
+  minio:
+    image: minio/minio:latest
+    container_name: omnisearch-minio-prod
+    restart: always
+    command: server /data --console-address ":9001"
+    env_file: [ .env.prod ]
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
+      MINIO_BROWSER_REDIRECT_URL: "${API_EXTERNAL_URL}/minio-console"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - ./minio_data:/data
+      - shared_media_prod:/app/shared_media
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+    networks:
+      - omnisearch-prod-network
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: omnisearch-minio-init-prod
+    depends_on:
+      minio:
+        condition: service_healthy
+    env_file: [ .env.prod ]
+    environment:
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+    entrypoint: >
+      /bin/sh -c " /usr/bin/mc alias set localminio http://minio:9000 \$S3_ACCESS_KEY \$S3_SECRET_KEY; /usr/bin/mc mb --ignore-existing localminio/videos; echo '{\"Version\":\"2012-10-17\",\"Statement\":[{\"Sid\":\"PublicReadGetObject\",\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"*\"]},\"Action\":[\"s3:GetObject\"],\"Resource\":[\"arn:aws:s3:::videos/media/*\"]}]}' > /tmp/inline-policy.json; /usr/bin/mc anonymous set-json /tmp/inline-policy.json localminio/videos; echo 'Bucket policy applied successfully!'; "
+    networks:
+      - omnisearch-prod-network
+
+  # ---- 3. Qdrant (Vector DB) ----
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: omnisearch-qdrant-prod
+    restart: always
+    ports:
+      - "6333:6333"
+    volumes:
+      - ./qdrant_data:/qdrant/storage
+    healthcheck:
+      test: [ "CMD-SHELL", "bash -c 'cat < /dev/null > /dev/tcp/localhost/6333'" ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+    networks:
+      - omnisearch-prod-network
+
+  # ---- 4. Backend (Ktor) ----
+  backend:
+    build: ./backend
+    container_name: omnisearch-backend-prod
+    restart: always
+    # Порт не выставлен наружу — доступ только через gateway
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    env_file: [ .env.prod ]
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_EXTERNAL_URL: ${API_EXTERNAL_URL}/s3
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
+      QDRANT_HOST: qdrant
+      SHARED_MEDIA_PATH: /app/shared_media
+    volumes:
+      - shared_media_prod:/app/shared_media
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --spider -q http://localhost:8080/api/v1/videos/search || exit 1" ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1G
+    networks:
+      - omnisearch-prod-network
+
+  # ---- 5. Frontend (React + Nginx) ----
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        - VITE_SERVER_HOST=${API_EXTERNAL_URL}
+    container_name: omnisearch-frontend-prod
+    restart: always
+    # Порт не выставлен наружу — доступ только через gateway
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --spider -q http://127.0.0.1:80/ || exit 1" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+    networks:
+      - omnisearch-prod-network
+
+  # ---- 6. Video Engine (Go) ----
+  video-engine:
+    build: ./video-engine
+    container_name: omnisearch-video-engine-prod
+    restart: always
+    ports:
+      - "8082:8081"
+    depends_on:
+      minio:
+        condition: service_healthy
+    env_file: [ .env.prod ]
+    environment:
+      PORT: 8081
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      SHARED_MEDIA_PATH: /app/shared_media
+      BACKEND_API_URL: http://backend:8080
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
+    volumes:
+      - shared_media_prod:/app/shared_media
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8081/health || exit 1" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+    networks:
+      - omnisearch-prod-network
+
+  # ---- 7. ML Engine (FastAPI + PyTorch) ----
+  ml-engine:
+    build: ./ml-engine
+    container_name: omnisearch-ml-engine-prod
+    restart: always
+    ports:
+      - "8000:8000"
+    depends_on:
+      qdrant:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    env_file: [ .env.prod ]
+    environment:
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: 6333
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
+      BACKEND_URL: http://backend:8080
+    volumes:
+      - ~/omnisearch/model_cache:/models
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8000/health | grep -q 'ready' || exit 1" ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 300s
+    deploy:
+      resources:
+        limits:
+          cpus: "4.0"
+          memory: 8G
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+    networks:
+      - omnisearch-prod-network
+
+volumes:
+  shared_media_prod:
+
+networks:
+  omnisearch-prod-network:
+    driver: bridge

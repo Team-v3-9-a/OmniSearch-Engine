@@ -1,0 +1,36 @@
+name: Deploy Prod (Main)
+
+on:
+  push:
+    branches: [main]
+
+# Не запускать параллельно несколько деплоев prod
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy to Prod
+    runs-on: self-hosted
+    steps:
+      - name: Pull latest code
+        run: |
+          cd /home/omnisearch/omnisearch/prod/OmniSearch-Engine
+          git fetch origin main
+          git checkout main
+          git reset --hard origin/main
+
+      - name: Build and restart containers
+        run: |
+          cd /home/omnisearch/omnisearch/prod/OmniSearch-Engine
+          docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build --remove-orphans
+          docker compose -f docker-compose.prod.yml --env-file .env.prod restart gateway
+
+      - name: Cleanup old images
+        run: docker image prune -f
+
+      - name: Show running containers
+        run: |
+          cd /home/omnisearch/omnisearch/prod/OmniSearch-Engine
+          docker compose -f docker-compose.prod.yml --env-file .env.prod ps

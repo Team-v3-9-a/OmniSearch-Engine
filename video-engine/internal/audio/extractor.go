@@ -2,13 +2,14 @@ package audio
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os/exec"
 )
 
 // Extract извлекает аудиодорожку из видео и сохраняет в WAV (16kHz, Mono).
-func Extract(inputPath, outputPath string) error {
-	cmd := exec.Command("ffmpeg",
+func Extract(ctx context.Context, inputPath, outputPath string) error {
+	cmd := exec.CommandContext(ctx, "ffmpeg",
 		"-y", "-i", inputPath,
 		"-vn", "-acodec", "pcm_s16le",
 		"-ar", "16000", "-ac", "1",

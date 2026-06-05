@@ -15,6 +15,8 @@ object VideoTable : Table("videos") {
     val durationSeconds = integer("duration_seconds")
     val s3Path = varchar("s3_path", 512)
     val status = varchar("status", 50)
+    val fps = double("fps").nullable()
+    val resolution = varchar("resolution", 50).nullable()
     val createdAt = datetime("created_at").clientDefault { nowUTC()
     }
     val updatedAt = datetime("updated_at").clientDefault { nowUTC()

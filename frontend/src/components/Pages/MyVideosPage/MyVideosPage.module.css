@@ -1,0 +1,193 @@
+.mainContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: start;
+  padding: 16px 15%;
+  width: 100%;
+}
+
+.title {
+  color: var(--text-primary-color);
+}
+
+.description {
+  color: var(--text-secondary-color);
+}
+
+.videoList {
+  display: grid;
+  margin-top: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+
+.videoItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid var(--separator-color);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.iconWrapper {
+  width: 100%;
+  height: 54px;
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+}
+
+.statusWrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.videoTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary-color);
+  width: 100%;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.videoStatus {
+  font-size: 14px;
+  color: var(--text-primary-color);
+}
+
+.createdAt {
+  font-size: 12px;
+  color: var(--text-tertiary-color);
+}
+
+.updatedAt {
+  font-size: 12px;
+  color: var(--text-tertiary-color);
+}
+
+.videoIcon {
+  width: 24px;
+  height: 24px;
+}
+
+.videoIcon path {
+  stroke: var(--text-primary-color);
+}
+
+.progressBarWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  margin: 8px 0 12px 0;
+}
+
+.progressBarInfo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.progressBarLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary-color);
+}
+
+.progressPercent {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent-color);
+}
+
+.progressTrack {
+  position: relative;
+  width: 100%;
+  height: 6px;
+  background-color: var(--separator-color);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progressBar {
+  height: 100%;
+  background-color: var(--accent-color);
+  border-radius: 3px;
+  transition: width 0.2s ease-out;
+}
+
+@keyframes indeterminateAnimation {
+  0% {
+    left: -35%;
+    right: 100%;
+  }
+
+  60% {
+    left: 100%;
+    right: -90%;
+  }
+
+  100% {
+    left: 100%;
+    right: -90%;
+  }
+}
+
+.progressBarIndeterminate {
+  position: absolute;
+  background-color: var(--accent-color);
+  height: 100%;
+  bottom: 0;
+  top: 0;
+  left: 0;
+  width: auto;
+  will-change: left, right;
+  animation: indeterminateAnimation 2.1s cubic-bezier(0.65, 0.815, 0.73, 0.395) infinite;
+}
+
+.section {
+  width: 100%;
+  margin-top: 16px;
+  margin-bottom: 24px;
+}
+
+.sectionTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-secondary-color);
+  margin: 0 0 12px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.emptyText {
+  color: var(--text-secondary-color);
+  margin-top: 16px;
+}
+
+.loadingText {
+  color: var(--text-primary-color);
+}
+
+.errorState {
+  color: var(--error-color);
+}
+
+@media (max-width: 768px) {
+  .mainContainer {
+    padding: 16px;
+  }
+
+  .videoList {
+    grid-template-columns: repeat(auto-fill, minmax(100%, 1fr));
+  }
+}

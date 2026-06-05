@@ -1,20 +1,9 @@
 import styles from './UploadProgress.module.css'
-import {type UploadStatus, useUploadStore} from "@/store/useUploadStore.ts";
+import {useUploadStore} from "@/store/useUploadStore.ts";
 import {useEffect, useState} from "react";
 import collapseIcon from "@/assets/Icons/Chevron_Down.svg";
 import {useVideoPooling} from "@/hooks/useVideoPooling.ts";
-
-const getStatusText = (status: UploadStatus) => {
-  switch (status) {
-    case 'UPLOADING': return 'Отправка';
-    case 'UPLOADED': return 'Загружено';
-    case 'PROCESSING_MEDIA': return 'Обработка видео';
-    case 'PROCESSING_ML': return 'ML анализ';
-    case 'READY': return 'Готово';
-    case 'ERROR': return 'Ошибка';
-    default: return '';
-  }
-};
+import { getStatusText } from '@/utils/statusText';
 
 const UploadProgress = () => {
   const {tasks} = useUploadStore()

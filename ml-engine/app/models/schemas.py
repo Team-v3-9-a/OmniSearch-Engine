@@ -1,11 +1,12 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Literal
 
 # Валидация данных для запроса на обработку аудио
 class AudioProcessRequest(BaseModel):
     video_id: str
-    bucket_name: str = "video"
-    object_key: str
+    bucket_name: str = "videos"
+    audio_key: str
+    frames_prefix: str
 
 # Валидация данных для запроса на поиск
 class SearchRequest(BaseModel):
@@ -19,6 +20,7 @@ class SearchResultItem(BaseModel):
     start_time: Optional[float] = None
     end_time: Optional[float] = None
     text_snippet: Optional[str] = None
+    source: Literal["audio", "frames"] = "audio"
 
 class SearchResponse(BaseModel):
     results: List[SearchResultItem]

@@ -1,23 +1,23 @@
 import styles from './Search.module.css'
 import searchIcon from '../../assets/Icons/Search_Magnifying_Glass.svg'
 import {useState} from "react";
-import {toast} from "react-toastify";
+import {useNavigate} from "react-router-dom";
 
 
 const Search = () => {
     const [searchQuery, setSearchQuery] = useState("");
+    const navigate = useNavigate()
 
-    const handleSearch = (e: React.FormEvent) => {
+    const handleSearch = (e: React.SubmitEvent) => {
         e.preventDefault()
 
         if (!searchQuery.trim()) return;
 
         setSearchQuery("")
 
-        toast(searchQuery, {
-            position: "top-right",
-            autoClose: 5000,
-        });
+        navigate(`/search?query=${searchQuery.trim()}`)
+
+
     }
 
     return(
