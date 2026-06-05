@@ -34,7 +34,7 @@ services:
     image: postgres:15-alpine
     container_name: omnisearch-postgres-prod
     restart: always
-    env_file: [.env.prod]
+    env_file: [ .env.prod ]
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -63,10 +63,11 @@ services:
     container_name: omnisearch-minio-prod
     restart: always
     command: server /data --console-address ":9001"
-    env_file: [.env.prod]
+    env_file: [ .env.prod ]
     environment:
       MINIO_ROOT_USER: ${S3_ACCESS_KEY}
       MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
+      MINIO_BROWSER_REDIRECT_URL: "${API_EXTERNAL_URL}/minio-console"
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -93,18 +94,12 @@ services:
     depends_on:
       minio:
         condition: service_healthy
-    env_file: [.env.prod]
+    env_file: [ .env.prod ]
     environment:
       S3_ACCESS_KEY: ${S3_ACCESS_KEY}
       S3_SECRET_KEY: ${S3_SECRET_KEY}
     entrypoint: >
-      /bin/sh -c "
-      /usr/bin/mc alias set localminio http://minio:9000 \$S3_ACCESS_KEY \$S3_SECRET_KEY;
-      /usr/bin/mc mb --ignore-existing localminio/videos;
-      echo '{\"Version\":\"2012-10-17\",\"Statement\":[{\"Sid\":\"PublicReadGetObject\",\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"*\"]},\"Action\":[\"s3:GetObject\"],\"Resource\":[\"arn:aws:s3:::videos/media/*\"]}]}' > /tmp/inline-policy.json;
-      /usr/bin/mc anonymous set-json /tmp/inline-policy.json localminio/videos;
-      echo 'Bucket policy applied successfully!';
-      "
+      /bin/sh -c " /usr/bin/mc alias set localminio http://minio:9000 \$S3_ACCESS_KEY \$S3_SECRET_KEY; /usr/bin/mc mb --ignore-existing localminio/videos; echo '{\"Version\":\"2012-10-17\",\"Statement\":[{\"Sid\":\"PublicReadGetObject\",\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"*\"]},\"Action\":[\"s3:GetObject\"],\"Resource\":[\"arn:aws:s3:::videos/media/*\"]}]}' > /tmp/inline-policy.json; /usr/bin/mc anonymous set-json /tmp/inline-policy.json localminio/videos; echo 'Bucket policy applied successfully!'; "
     networks:
       - omnisearch-prod-network
 
@@ -144,7 +139,7 @@ services:
         condition: service_healthy
       qdrant:
         condition: service_healthy
-    env_file: [.env.prod]
+    env_file: [ .env.prod ]
     environment:
       DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME}
       DB_USER: ${DB_USER}
@@ -152,6 +147,7 @@ services:
       S3_ENDPOINT: http://minio:9000
       S3_ACCESS_KEY: ${S3_ACCESS_KEY}
       S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_EXTERNAL_URL: ${API_EXTERNAL_URL}/s3
       INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
       QDRANT_HOST: qdrant
       SHARED_MEDIA_PATH: /app/shared_media
@@ -207,7 +203,7 @@ services:
     depends_on:
       minio:
         condition: service_healthy
-    env_file: [.env.prod]
+    env_file: [ .env.prod ]
     environment:
       PORT: 8081
       S3_ENDPOINT: http://minio:9000
@@ -244,7 +240,7 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-    env_file: [.env.prod]
+    env_file: [ .env.prod ]
     environment:
       QDRANT_HOST: qdrant
       QDRANT_PORT: 6333

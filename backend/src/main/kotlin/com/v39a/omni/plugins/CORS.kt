@@ -6,9 +6,22 @@ import io.ktor.server.application.*
 import io.ktor.server.plugins.cors.routing.*
 
 fun Application.configureCORS() {
+
+    val corsOriginsRaw = environment.config.propertyOrNull("http.allowedOrigins")?.getString() ?: ""
+
     install(CORS) {
-        allowHost("localhost:3000")
-        allowHost("127.0.0.1:3000")
+        val origins = corsOriginsRaw.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+
+        if (origins.contains("*")) {
+            anyHost()
+        } else {
+            origins.forEach { origin ->
+                val scheme = if (origin.startsWith("https://")) "https" else "http"
+                val host = origin.removePrefix("$scheme://")
+
+                allowHost(host, schemes = listOf(scheme))
+            }
+        }
 
         allowMethod(HttpMethod.Options)
         allowMethod(HttpMethod.Get)

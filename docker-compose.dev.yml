@@ -67,6 +67,7 @@ services:
     environment:
       MINIO_ROOT_USER: ${S3_ACCESS_KEY}
       MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
+      MINIO_BROWSER_REDIRECT_URL: "${API_EXTERNAL_URL}/minio-console"
     ports:
       - "9002:9000"
       - "9003:9001"
@@ -146,6 +147,7 @@ services:
       S3_ENDPOINT: http://minio:9000
       S3_ACCESS_KEY: ${S3_ACCESS_KEY}
       S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_EXTERNAL_URL: ${API_EXTERNAL_URL}/s3
       INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
       QDRANT_HOST: qdrant
       SHARED_MEDIA_PATH: /app/shared_media
@@ -227,12 +229,11 @@ services:
       - omnisearch-dev-network
 
   # ---- 7. ML Engine (FastAPI + PyTorch) ----
-  # Запускается только с профилем: docker compose --profile gpu -f docker-compose.dev.yml --env-file .env.dev up -d
   ml-engine:
     build: ./ml-engine
     container_name: omnisearch-ml-engine-dev
     restart: always
-    profiles: [ gpu ]
+    # profiles: [ gpu ]
     ports:
       - "8001:8000"
     depends_on:
