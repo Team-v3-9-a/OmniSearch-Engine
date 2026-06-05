@@ -62,34 +62,23 @@ graph TB
 
 ```mermaid
 flowchart LR
-    subgraph Client["Client Layer"]
-        FE[Frontend<br/>React 19 + TypeScript]
-    end
-    
-    subgraph API["API Layer"]
-        BE[Backend API<br/>Ktor + Kotlin]
-    end
-    
-    subgraph Services["Services Layer"]
-        VE[Video Engine<br/>Go 1.25]
-        ML[ML Engine<br/>Python 3.11]
-    end
-    
-    subgraph Data["Data Layer"]
-        PG[(PostgreSQL<br/>Metadata)]
-        S3[(MinIO S3<br/>Storage)]
-        QD[(Qdrant<br/>Vectors)]
-    end
-    
+    FE["🖥 Frontend\nReact 19\nTypeScript\nZustand"]
+    BE["⚙️ Backend API\nKotlin\nKtor\nCoroutines"]
+    VE["🎬 Video Engine\nGo 1.25\nFFmpeg\nGoCV"]
+    ML["🧠 ML Engine\nPython 3.11\nWhisper\nCLIP"]
+    PG[("🐘 PostgreSQL")]
+    S3[("📦 MinIO S3")]
+    QD[("🔮 Qdrant")]
+
     FE -->|REST API| BE
-    BE -->|JDBC| PG
-    BE -->|S3 SDK| S3
-    BE -->|HTTP| VE
-    BE -->|HTTP| ML
-    VE -->|S3 SDK| S3
-    VE -->|HTTP| ML
-    ML -->|S3 SDK| S3
-    ML -->|gRPC| QD
+    BE -->|Exposed ORM| PG
+    BE -->|MinIO SDK| S3
+    BE -->|HTTP Callback| VE
+    BE -->|HTTP Search| ML
+    VE -->|Download/Upload| S3
+    VE -->|Process Trigger| ML
+    ML -->|Download Audio/Frames| S3
+    ML -->|Vector Upsert/Search| QD
 ```
 
 ### Пайплайн загрузки видео
