@@ -689,13 +689,6 @@ Bucket `videos` имеет политику public-read только для об
 - Исправление bucket name: `video` → `videos`
 - Множественные фиксы моков и endpoint'ов
 
-## 🤝 Вклад в проект
-
-1. Создайте фича-ветку (`git checkout -b feature/amazing-feature`)
-2. Закоммитьте изменения (`git commit -m 'feat: add amazing feature'`)
-3. Запушьте ветку (`git push origin feature/amazing-feature`)
-4. Откройте Pull Request
-
 ### Соглашения по коммитам
 
 - `feat:` — новая функциональность
@@ -706,16 +699,4 @@ Bucket `videos` имеет политику public-read только для об
 - `test:` — добавление тестов
 - `chore:` — изменения в сборке, зависимостях
 
-## 📄 Лицензия
 
-Proprietary. Все права защищены.
-
-## 📞 Контакты
-
-- **Команда**: Team v3-9-a
-- **Проект**: OmniSearch Engine
-- **Jira**: OMNI-*, VE-*
-
----
-
-**Сделано с ❤️ для поиска по видео**
