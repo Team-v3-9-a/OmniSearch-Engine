@@ -39,8 +39,6 @@ services:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
-    ports:
-      - "5433:5432"
     volumes:
       - ./postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -68,9 +66,6 @@ services:
       MINIO_ROOT_USER: ${S3_ACCESS_KEY}
       MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
       MINIO_BROWSER_REDIRECT_URL: "${API_EXTERNAL_URL}/minio-console"
-    ports:
-      - "9002:9000"
-      - "9003:9001"
     volumes:
       - ./minio_data:/data
       - shared_media_dev:/app/shared_media
@@ -108,8 +103,6 @@ services:
     image: qdrant/qdrant:latest
     container_name: omnisearch-qdrant-dev
     restart: always
-    ports:
-      - "6334:6333"
     volumes:
       - ./qdrant_data:/qdrant/storage
     healthcheck:
@@ -198,8 +191,6 @@ services:
     build: ./video-engine
     container_name: omnisearch-video-engine-dev
     restart: always
-    ports:
-      - "8083:8081"
     depends_on:
       minio:
         condition: service_healthy
@@ -234,8 +225,6 @@ services:
     container_name: omnisearch-ml-engine-dev
     restart: always
     # profiles: [ gpu ]
-    ports:
-      - "8001:8000"
     depends_on:
       qdrant:
         condition: service_healthy
