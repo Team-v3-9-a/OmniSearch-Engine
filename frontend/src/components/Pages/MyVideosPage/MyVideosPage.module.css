@@ -25,11 +25,37 @@
 
 .videoItem {
   display: flex;
+  position: relative;
   flex-direction: column;
   gap: 4px;
   border: 1px solid var(--separator-color);
   border-radius: 12px;
   padding: 12px;
+}
+
+.deleteButton {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  border: 1px solid var(--error-color);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 6px;
+
+  cursor: pointer;
+
+  transition: all 0.3s ease-in-out;
+
+  &:hover {
+    background-color: var(--error-hover-color);
+  }
+
+  &:active {
+    scale: 0.98;
+  }
 }
 
 .iconWrapper {
@@ -57,6 +83,7 @@
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
+  margin-right: 30px;
 }
 
 .videoStatus {
@@ -181,6 +208,68 @@
 .errorState {
   color: var(--error-color);
 }
+
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.3);
+  z-index: 999;
+  backdrop-filter: blur(2px);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.window {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px;
+  background-color: var(--background-color);
+  border-radius: 12px;
+
+  color: var(--text-primary-color);
+}
+
+.hidden {
+  display: none;
+}
+
+.buttonsContainer {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  justify-content: flex-end;
+}
+
+.window button {
+  padding: 3px 23px;
+  border: none;
+  border-radius: 12px;
+
+  color: white;
+  cursor: pointer;
+}
+
+.cancel {
+  background-color: var(--separator-color);
+}
+
+.agree {
+  background-color: var(--green);
+  transition: opacity 0.2s ease;
+}
+
+.agree:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+
 
 @media (max-width: 768px) {
   .mainContainer {
