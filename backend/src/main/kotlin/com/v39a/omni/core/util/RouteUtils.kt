@@ -25,7 +25,7 @@ fun ApplicationCall.requireInternalSecret(expectedSecret: String) {
 }
 
 suspend fun ApplicationCall.receiveVideoMultipart(): ParsedUploadRequest {
-    this.formFieldLimit = 10L * 1024 * 1024 // 10 MB limit for form fields to prevent DoS
+    this.formFieldLimit = Long.MAX_VALUE
 
     var title = ""
     var durationSeconds = 0
@@ -34,7 +34,7 @@ suspend fun ApplicationCall.receiveVideoMultipart(): ParsedUploadRequest {
     var fileName = "unknown.mp4"
     var contentType = "video/mp4"
 
-    val multipart = receiveMultipart()
+    val multipart = receiveMultipart(formFieldLimit = Long.MAX_VALUE)
     while (true) {
         val part = multipart.readPart() ?: break
         when (part) {
