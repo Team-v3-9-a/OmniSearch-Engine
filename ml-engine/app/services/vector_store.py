@@ -52,8 +52,8 @@ class QdrantService:
 
         return len(points)
 
-    # Поиск видео по эмбеддингу (аудио)
-    def search(self, query_embedding: list, top_k: int = 10):
+    # Поиск по аудио
+    def search_audio(self, query_embedding: list, top_k: int = 10):
         search_result = self.client.query_points(
             collection_name=self.audio_collection,
             query=query_embedding,
@@ -88,7 +88,7 @@ class QdrantService:
 
         return len(points)
 
-    # Поиск по кадрам (frames)
+    # Поиск по кадрам
     def search_frames(self, query_embedding: list, top_k: int = 10):
         search_result = self.client.query_points(
             collection_name=self.frames_collection,
