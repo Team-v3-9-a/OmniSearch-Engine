@@ -1,8 +1,8 @@
 package com.v39a.omni.feature.video.infrastructure
 
 import com.v39a.omni.core.exceptions.MLEngineUnavailableException
-import com.v39a.omni.feature.video.domain.MLEngineClient
-import com.v39a.omni.feature.video.domain.MLEngineSearchResult
+import com.v39a.omni.feature.video.port.MLEngineClient
+import com.v39a.omni.feature.video.port.MLEngineSearchResult
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.post

@@ -1,9 +1,10 @@
 package com.v39a.omni.plugins
 
-import com.v39a.omni.feature.video.domain.VideoEngineClient
-import com.v39a.omni.feature.video.domain.VideoRepository
-import com.v39a.omni.feature.video.domain.VideoStorage
-import com.v39a.omni.feature.video.domain.MLEngineClient
+import com.v39a.omni.feature.video.domain.usecase.DeleteVideoUseCase
+import com.v39a.omni.feature.video.port.VideoEngineClient
+import com.v39a.omni.feature.video.port.VideoRepository
+import com.v39a.omni.feature.video.port.VideoStorage
+import com.v39a.omni.feature.video.port.MLEngineClient
 import com.v39a.omni.feature.video.domain.usecase.GetVideoStreamUrlUseCase
 import com.v39a.omni.feature.video.domain.usecase.GetVideoUseCase
 import com.v39a.omni.feature.video.domain.usecase.GetVideosUseCase
@@ -147,6 +148,13 @@ fun Application.configureFrameworks() {
         }
 
         single {
+            DeleteVideoUseCase(
+                videoRepository = get(),
+                videoStorage = get(),
+            )
+        }
+
+        single {
             SearchVideosUseCase(
                 mlEngineClient = get(),
                 videoRepository = get(),
@@ -155,7 +163,7 @@ fun Application.configureFrameworks() {
             )
         }
 
-        single { VideoUseCases(get(), get(), get(), get(), get(), get()) }
+        single { VideoUseCases(get(), get(), get(), get(), get(), get(), get()) }
     }
 
     install(Koin) {

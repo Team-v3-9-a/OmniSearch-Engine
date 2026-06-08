@@ -84,6 +84,11 @@ fun Route.videoRoutes() {
                     call.respond(HttpStatusCode.OK, video.toResponseDTO())
                 }
 
+                delete {
+                    videoUseCases.delete(call.videoId)
+                    call.respond(HttpStatusCode.NoContent)
+                }
+
                 get("/stream") {
                     val presignedUrl = videoUseCases.getStreamUrl(call.videoId)
                     call.respond(HttpStatusCode.OK, StreamUrlResponse(url = presignedUrl))

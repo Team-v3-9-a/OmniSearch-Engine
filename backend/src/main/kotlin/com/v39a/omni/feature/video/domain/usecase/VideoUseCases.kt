@@ -6,5 +6,6 @@ data class VideoUseCases(
     val patchMetadata: UpdateVideoMetaUseCase,
     val getStreamUrl: GetVideoStreamUrlUseCase,
     val getAll: GetVideosUseCase,
-    val search: SearchVideosUseCase
+    val search: SearchVideosUseCase,
+    val delete: DeleteVideoUseCase,
 )

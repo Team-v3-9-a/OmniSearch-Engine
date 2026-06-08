@@ -1,4 +1,4 @@
-package com.v39a.omni.feature.video.domain
+package com.v39a.omni.feature.video.port
 
 data class MLEngineSearchResult(
     val videoId: String,

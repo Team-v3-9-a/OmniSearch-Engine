@@ -2,10 +2,10 @@ package com.v39a.omni.feature.video.domain.usecase
 
 import com.v39a.omni.core.util.nowUTC
 import com.v39a.omni.feature.video.domain.Video
-import com.v39a.omni.feature.video.domain.VideoEngineClient
-import com.v39a.omni.feature.video.domain.VideoRepository
+import com.v39a.omni.feature.video.port.VideoEngineClient
+import com.v39a.omni.feature.video.port.VideoRepository
 import com.v39a.omni.feature.video.domain.VideoStatus
-import com.v39a.omni.feature.video.domain.VideoStorage
+import com.v39a.omni.feature.video.port.VideoStorage
 import com.v39a.omni.feature.video.domain.command.UpdateVideoMetadataCommand
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

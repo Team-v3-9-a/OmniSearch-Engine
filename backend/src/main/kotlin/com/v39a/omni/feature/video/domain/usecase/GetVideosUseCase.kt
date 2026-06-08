@@ -1,7 +1,7 @@
 package com.v39a.omni.feature.video.domain.usecase
 
 import com.v39a.omni.feature.video.domain.Video
-import com.v39a.omni.feature.video.domain.VideoRepository
+import com.v39a.omni.feature.video.port.VideoRepository
 
 class GetVideosUseCase(
     private val videoRepository: VideoRepository

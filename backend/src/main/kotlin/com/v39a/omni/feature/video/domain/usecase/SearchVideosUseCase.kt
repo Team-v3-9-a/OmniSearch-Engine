@@ -1,9 +1,9 @@
 package com.v39a.omni.feature.video.domain.usecase
 
-import com.v39a.omni.feature.video.domain.MLEngineClient
-import com.v39a.omni.feature.video.domain.VideoRepository
+import com.v39a.omni.feature.video.port.MLEngineClient
+import com.v39a.omni.feature.video.port.VideoRepository
 import com.v39a.omni.feature.video.domain.VideoStatus
-import com.v39a.omni.feature.video.domain.VideoStorage
+import com.v39a.omni.feature.video.port.VideoStorage
 import com.v39a.omni.feature.video.domain.VideoSearchResult
 import com.v39a.omni.feature.video.domain.VideoSearchSegment
 import java.util.UUID
