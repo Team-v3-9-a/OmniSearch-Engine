@@ -16,8 +16,7 @@ import java.util.UUID
 val ApplicationCall.videoId: UUID
     get() = UUID.fromString(parameters["id"] ?: throw IllegalArgumentException("Missing ID parameter"))
 
-fun ApplicationCall.requireInternalSecret() {
-    val expectedSecret = application.environment.config.property("security.internalSecret").getString()
+fun ApplicationCall.requireInternalSecret(expectedSecret: String) {
     val providedSecret = request.header("X-Internal-Secret")
 
     if (providedSecret != expectedSecret) {

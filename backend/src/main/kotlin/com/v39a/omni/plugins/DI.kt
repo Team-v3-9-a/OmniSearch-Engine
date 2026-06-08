@@ -1,5 +1,6 @@
 package com.v39a.omni.plugins
 
+import com.v39a.omni.core.config.SecurityConfig
 import com.v39a.omni.feature.video.domain.usecase.DeleteVideoUseCase
 import com.v39a.omni.feature.video.port.VideoEngineClient
 import com.v39a.omni.feature.video.port.VideoRepository
@@ -65,6 +66,14 @@ fun Application.configureFrameworks() {
             client
         }
 
+        single<SecurityConfig> {
+            val secret = System.getProperty("INTERNAL_API_SECRET")
+                ?: System.getenv("INTERNAL_API_SECRET")
+                ?: throw IllegalStateException("INTERNAL_API_SECRET is missing!")
+
+            SecurityConfig(internalSecret = secret)
+        }
+
         single<VideoStorage> {
             MinioVideoStorage(
                 minioClient = get(),
@@ -105,7 +114,7 @@ fun Application.configureFrameworks() {
 
         single<MLEngineClient> {
             KtorHttpMLEngineClient(
-                get()
+                get(),
             )
         }
 
@@ -151,6 +160,7 @@ fun Application.configureFrameworks() {
             DeleteVideoUseCase(
                 videoRepository = get(),
                 videoStorage = get(),
+                mlClient = get(),
             )
         }
 

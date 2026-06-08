@@ -1,5 +1,6 @@
 package com.v39a.omni.feature.video.api
 
+import com.v39a.omni.core.config.SecurityConfig
 import com.v39a.omni.core.util.receiveVideoMultipart
 import com.v39a.omni.core.util.requireInternalSecret
 import com.v39a.omni.core.util.videoId
@@ -16,6 +17,7 @@ import org.slf4j.LoggerFactory
 
 fun Route.videoRoutes() {
     val videoUseCases by inject<VideoUseCases>()
+    val securityConfig by inject<SecurityConfig>()
     val logger = LoggerFactory.getLogger(javaClass)
 
     route("/api/v1") {
@@ -99,7 +101,7 @@ fun Route.videoRoutes() {
 
         route("/internal/videos") {
             patch("/{id}") {
-                call.requireInternalSecret()
+                call.requireInternalSecret(securityConfig.internalSecret)
 
                 val request = call.receive<UpdateVideoRequest>()
 
