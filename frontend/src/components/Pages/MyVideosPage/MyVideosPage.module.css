@@ -39,6 +39,8 @@
   right: 8px;
   border: 1px solid var(--error-color);
 
+  background-color: transparent;
+
   display: flex;
   align-items: center;
   justify-content: center;
