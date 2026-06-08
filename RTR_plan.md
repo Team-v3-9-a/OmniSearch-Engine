@@ -70,6 +70,16 @@
 
 ---
 
+#### Документация: расширить FR и обновить ingestion pipeline (SA)
+**Описание:** Расширить `docs/requirements/fr.md` до полноценных функциональных требований (user stories или развёрнутые FR). Обновить `docs/architecture/ingestion-pipeline.md` — добавить текстовое описание к mermaid-диаграмме.
+
+**AC:**
+- `fr.md` содержит минимум 10 функциональных требований, сгруппированных по доменам (Upload, Processing, Search, Management)
+- `ingestion-pipeline.md` содержит текстовое описание каждого этапа + mermaid-диаграмму
+- Документы ревьюнуты командой
+
+---
+
 ## ⚙️ Backend
 
 #### Каскадное удаление видео
@@ -210,6 +220,17 @@
 - Все логи в формате JSON (`level`, `msg`, `video_id`, `timestamp`, `request_id`)
 - Request ID генерируется при получении `/process` и прокидывается через весь pipeline
 - Уровни логирования: DEBUG, INFO, WARN, ERROR
+
+---
+
+#### Документация: data flow, state machine, runbook (SA)
+**Описание:** Создать три документа: `docs/architecture/data-flow.md` (S3 paths, формат данных), `docs/architecture/state-machine.md` (статусы видео, правила переходов), `docs/runbook.md` (операционный гайд: рестарт, логи, частые проблемы).
+
+**AC:**
+- `data-flow.md` описывает S3 path convention (`media/{id}/audio.wav`, `media/{id}/frames/frame_*.jpg`), формат payload в Qdrant, схему PostgreSQL
+- `state-machine.md` содержит mermaid stateDiagram + текстовые правила каждого перехода + кто инициирует
+- `runbook.md` содержит минимум 10 операционных сценариев (зависшее видео, очистка S3, рестарт сервиса)
+- Все документы в doc-as-code формате (markdown + mermaid)
 
 ---
 

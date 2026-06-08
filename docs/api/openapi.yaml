@@ -2,64 +2,76 @@ openapi: 3.0.3
 info:
   title: OmniSearch Engine API
   description: |
-    REST API контракты для MVP системы мультимодального поиска по видео (Control Plane). Определяет синхронный поиск, инициализацию асинхронного пайплайна загрузки и внутреннее взаимодействие между микросервисами.
-  version: 0.2.0
+    REST API контракты для системы мультимодального поиска по видео.
+    Определяет публичные эндпоинты (Ingestion, Retrieval, Video Management)
+    и внутреннее взаимодействие между микросервисами (Internal).
+  version: 0.3.0
+
 servers:
-- url: https://virtserver.swaggerhub.com/teamv39a/OmniSearch-Engine/0.1.0
-  description: SwaggerHub API Auto Mocking
 - url: /api/v1
   description: Основной префикс для внешних эндпоинтов
+
 tags:
 - name: Ingestion
-  description: Загрузка и управление медиафайлами
+  description: Загрузка видеофайлов
 - name: Retrieval
   description: Поиск по векторизованной базе знаний
+- name: Video Management
+  description: CRUD-операции с видео
 - name: Internal
-  description: Внутреннее взаимодействие между микросервисами (Video Engine, ML Engine, Backend)
+  description: Взаимодействие между микросервисами (Video Engine ↔ Backend ↔ ML Engine)
+
 paths:
-  /upload:
+  # ───────────────────────────────────────────────
+  #  PUBLIC API
+  # ───────────────────────────────────────────────
+
+  /videos/upload:
     post:
-      tags:
-      - Ingestion
-      summary: Загрузка видеофайла в систему
-      description: "Инициализирует асинхронный процесс обработки. \nПринимает файл, сохраняет его в S3, создает запись в БД и возвращает ID задачи.\n"
+      tags: [Ingestion]
+      summary: Загрузка видеофайла
+      description: |
+        Принимает видеофайл, сохраняет в S3, создает запись в БД и запускает
+        асинхронный пайплайн обработки (Video Engine → ML Engine).
       requestBody:
+        required: true
         content:
           multipart/form-data:
             schema:
-              $ref: "#/components/schemas/upload_body"
-        required: true
+              $ref: "#/components/schemas/UploadBody"
       responses:
         "202":
-          description: Файл успешно принят и поставлен в очередь на обработку.
+          description: Файл принят, обработка запущена.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/UploadResponse"
         "400":
-          description: "Некорректный запрос."
+          description: Некорректный запрос (отсутствует файл, неверный формат).
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /search:
+  /videos/search:
     get:
-      tags:
-      - Retrieval
-      summary: Поиск релевантных видеороликов (устаревший синхронный API)
-      description: Синхронный поиск. Выполняет векторизацию текста через ML Engine и ищет в базе.
+      tags: [Retrieval]
+      summary: Семантический поиск по видео
+      description: |
+        Проксирует запрос в ML Engine (E5 + CLIP text embeddings),
+        выполняет RRF-ранкинг хитов из audio и frames коллекций Qdrant,
+        обогащает результаты метаданными из PostgreSQL и presigned URL для thumbnails.
       parameters:
       - name: query
         in: query
-        description: Текстовый поисковый запрос.
         required: true
+        description: Текстовый поисковый запрос на естественном языке.
         schema:
-          minLength: 2
           type: string
+          minLength: 2
       responses:
         "200":
-          description: Отсортированный массив релевантных видео.
+          description: Массив релевантных видео, отсортированных по score.
           content:
             application/json:
               schema:
@@ -67,210 +79,273 @@ paths:
                 items:
                   $ref: "#/components/schemas/SearchResultItem"
         "400":
-          description: Некорректный запрос.
+          description: Пустой или слишком короткий запрос.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: ML Engine недоступен.
+
+  /videos:
+    get:
+      tags: [Video Management]
+      summary: Список всех видео
+      description: Возвращает массив всех загруженных видео, отсортированных по дате создания (DESC).
+      responses:
+        "200":
+          description: Массив видео.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VideoResponseDTO"
+
+  /videos/{id}:
+    get:
+      tags: [Video Management]
+      summary: Получение видео по ID
+      description: Возвращает метаданные и текущий статус конкретного видео.
+      parameters:
+      - $ref: "#/components/parameters/VideoId"
+      responses:
+        "200":
+          description: Метаданные видео.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoResponseDTO"
+        "404":
+          description: Видео не найдено.
+
+  /videos/{id}/stream:
+    get:
+      tags: [Video Management]
+      summary: Получение presigned URL для стриминга
+      description: |
+        Генерирует MinIO presigned URL для воспроизведения видео в браузере.
+        URL валиден в течение 1 часа.
+      parameters:
+      - $ref: "#/components/parameters/VideoId"
+      responses:
+        "200":
+          description: Presigned URL.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StreamUrlResponse"
+        "404":
+          description: Видео не найдено.
+
+  # ───────────────────────────────────────────────
+  #  INTERNAL API
+  # ───────────────────────────────────────────────
 
   /internal/videos/{id}:
     patch:
-      tags:
-      - Internal
-      summary: Webhook для обновления статуса видео (от Video Engine к Backend)
-      description: Вызывается Video Engine для обновления статуса, длительности и других метаданных видеоролика после окончания нарезки и процессинга.
+      tags: [Internal]
+      summary: Обновление статуса/метаданных видео
+      description: |
+        Вызывается Video Engine и ML Engine для обновления статуса видео.
+        Video Engine: PROCESSING_MEDIA → PROCESSING_ML (с metadata).
+        ML Engine: PROCESSING_ML → READY или ERROR.
       parameters:
-      - name: id
-        in: path
-        description: UUID видеоролика
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: X-Internal-Secret
-        in: header
-        description: Секретный токен для доступа к внутреннему API
-        required: true
-        schema:
-          type: string
+      - $ref: "#/components/parameters/VideoId"
+      - $ref: "#/components/parameters/InternalSecret"
       requestBody:
+        required: true
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/UpdateVideoRequest"
-        required: true
       responses:
         "200":
-          description: Успешное обновление статуса.
+          description: Статус обновлен.
         "400":
-          description: Некорректные параметры или тело запроса.
+          description: Некорректные параметры.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "403":
-          description: Ошибка валидации X-Internal-Secret.
+          description: Неверный X-Internal-Secret.
+
+  # ───────────────────────────────────────────────
+  #  INTER-SERVICE: Video Engine
+  # ───────────────────────────────────────────────
 
   http://video-engine:8081/process:
     post:
-      tags:
-      - Internal
-      summary: Запуск процессинга видео в Video Engine
-      description: Backend вызывает этот эндпоинт, чтобы начать нарезку кадров и извлечение аудио из исходного видео.
+      tags: [Internal]
+      summary: Запуск обработки видео (Backend → Video Engine)
+      description: Начинает нарезку кадров и извлечение аудио из видео.
       requestBody:
+        required: true
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/VideoProcessRequest"
-        required: true
       responses:
         "202":
-          description: Принято в асинхронную обработку.
+          description: Принято в обработку.
         "400":
           description: Ошибка в теле запроса.
 
+  http://video-engine:8081/health:
+    get:
+      tags: [Internal]
+      summary: Health check Video Engine
+      responses:
+        "200":
+          description: Сервис работает.
+
+  # ───────────────────────────────────────────────
+  #  INTER-SERVICE: ML Engine
+  # ───────────────────────────────────────────────
+
   http://ml-engine:8000/api/v1/process:
     post:
-      tags:
-      - Internal
-      summary: Запуск ML-процессинга аудио
-      description: Backend (или Video Engine) вызывает ML Engine для транскрибации и векторизации аудио.
+      tags: [Internal]
+      summary: ML-обработка аудио и кадров (Video Engine → ML Engine)
+      description: |
+        Скачивает аудио и кадры из S3, выполняет:
+        1) Whisper транскрибация → текстовые эмбеддинги (E5) → upsert в audio_collection
+        2) CLIP Vision эмбеддинги кадров → upsert в frames_collection
+        По завершении отправляет callback READY/ERROR к Backend.
       requestBody:
+        required: true
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/AudioProcessRequest"
-        required: true
       responses:
         "202":
-          description: Задание на транскрибацию успешно создано.
+          description: Задание на обработку создано.
 
   http://ml-engine:8000/api/v1/search:
     post:
-      tags:
-      - Internal
-      summary: Векторный поиск (Proxy to ML Engine)
-      description: Backend отправляет поисковый запрос к ML Engine, чтобы получить список релевантных видео и таймкодов.
+      tags: [Internal]
+      summary: Гибридный векторный поиск (Backend → ML Engine)
+      description: |
+        Параллельно выполняет:
+        1) E5 text embedding → поиск по audio_collection
+        2) CLIP text embedding → поиск по frames_collection
+        Результаты сливаются через RRF (Reciprocal Rank Fusion).
       requestBody:
+        required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SearchRequest"
-        required: true
+              $ref: "#/components/schemas/MLSearchRequest"
       responses:
         "200":
-          description: Успешный поиск.
+          description: Ранкированные результаты.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SearchResponse"
+                $ref: "#/components/schemas/MLSearchResponse"
+
+  http://ml-engine:8000/health:
+    get:
+      tags: [Internal]
+      summary: Health check ML Engine
+      responses:
+        "200":
+          description: '{"status": "ready"}'
+
+# ═══════════════════════════════════════════════
+#  COMPONENTS
+# ═══════════════════════════════════════════════
 
 components:
+  parameters:
+    VideoId:
+      name: id
+      in: path
+      required: true
+      description: UUID видеоролика.
+      schema:
+        type: string
+        format: uuid
+
+    InternalSecret:
+      name: X-Internal-Secret
+      in: header
+      required: true
+      description: Секретный токен для внутреннего API.
+      schema:
+        type: string
+
   schemas:
+    # ── Enums ──
     VideoStatus:
       type: string
-      description: Текущий статус видеоролика в пайплайне обработки.
+      description: Статус видео в пайплайне обработки.
       enum:
-      - UPLOADED
-      - PROCESSING_ML
-      - READY
-      - ERROR
+        - UPLOADED
+        - PROCESSING_MEDIA
+        - PROCESSING_ML
+        - READY
+        - ERROR
+
+    # ── Public API Schemas ──
+    UploadBody:
+      required: [file]
+      type: object
+      properties:
+        file:
+          type: string
+          format: binary
 
     UploadResponse:
-      required:
-      - status
-      - video_id
+      required: [id, message]
       type: object
       properties:
-        video_id:
+        id:
           type: string
           format: uuid
-        status:
-          $ref: "#/components/schemas/VideoStatus"
         message:
           type: string
+          example: "Video uploaded successfully. Processing started."
 
-    VideoProcessRequest:
-      required:
-      - video_id
-      - s3_path
+    VideoResponseDTO:
+      required: [id, title, status, createdAt, updatedAt]
       type: object
       properties:
-        video_id:
+        id:
           type: string
           format: uuid
-        s3_path:
+        title:
           type: string
-          description: "Путь в S3 к исходному видео. Пример: videos/file.mp4"
-
-    AudioProcessRequest:
-      required:
-      - video_id
-      - audio_key
-      - frames_prefix
-      type: object
-      properties:
-        video_id:
-          type: string
-          format: uuid
-        bucket_name:
-          type: string
-          default: "video"
-          description: "Имя бакета в S3. По умолчанию 'video'."
-        audio_key:
-          type: string
-          description: "Ключ аудиофайла в S3. Пример: media/{id}/audio.wav"
-        frames_prefix:
-          type: string
-          description: "Префикс путей к кадрам в S3. Пример: media/{id}/frames/"
-
-    UpdateVideoRequest:
-      type: object
-      properties:
         status:
           $ref: "#/components/schemas/VideoStatus"
-        durationSeconds:
-          type: integer
-          description: Длительность видеоролика в секундах
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
         fps:
           type: number
           format: float
-          description: Кадровая частота исходного видео
+          nullable: true
         resolution:
           type: string
-          description: Разрешение видео (например, "1920x1080")
-        frameCount:
-          type: integer
-          description: Общее количество кадров
-        thumbnailPath:
-          type: string
-          description: Путь к сохраненному превью в S3
+          nullable: true
+          example: "1920x1080"
 
-    SearchRequest:
-      required:
-      - query
+    StreamUrlResponse:
+      required: [url]
       type: object
       properties:
-        query:
+        url:
           type: string
-        top_k:
-          type: integer
-          default: 5
-
-    SearchResponse:
-      required:
-      - results
-      type: object
-      properties:
-        results:
-          type: array
-          items:
-            $ref: "#/components/schemas/SearchResultItem"
+          format: uri
+          description: MinIO presigned URL, валиден 1 час.
 
     SearchResultItem:
-      required:
-      - score
-      - video_id
+      required: [video_id, title, score, segments]
       type: object
       properties:
         video_id:
@@ -281,36 +356,141 @@ components:
         thumbnail_url:
           type: string
           format: uri
+        duration:
+          type: integer
+          description: Длительность в секундах.
+        created_date:
+          type: string
+          format: date-time
+        upload_date:
+          type: string
+          format: date-time
         score:
           type: number
-          format: float
-        status:
-          $ref: "#/components/schemas/VideoStatus"
-        start_time:
-          type: number
-          format: float
-        end_time:
-          type: number
-          format: float
+          format: double
+          description: Максимальный RRF score среди сегментов.
+        segments:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchResultSegment"
+
+    SearchResultSegment:
+      required: [text_snippet, start_time, end_time]
+      type: object
+      properties:
         text_snippet:
           type: string
+          description: Фрагмент транскрибации, соответствующий запросу.
+        start_time:
+          type: number
+          format: double
+          description: Начало сегмента в секундах.
+        end_time:
+          type: number
+          format: double
+          description: Конец сегмента в секундах.
+
+    # ── Internal API Schemas ──
+    UpdateVideoRequest:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/VideoStatus"
+        error:
+          type: string
+          description: Сообщение об ошибке (при status=ERROR).
+        durationSeconds:
+          type: integer
+        thumbnailPath:
+          type: string
+          description: 'S3 путь к thumbnail. Пример: media/{id}/thumbnail.jpg'
+        fps:
+          type: number
+          format: float
+        resolution:
+          type: string
+          example: "1920x1080"
+
+    # ── Video Engine Schemas ──
+    VideoProcessRequest:
+      required: [video_id, s3_path]
+      type: object
+      properties:
+        video_id:
+          type: string
+          format: uuid
+        s3_path:
+          type: string
+          description: 'S3 ключ исходного видео. Пример: videos/filename.mp4'
+
+    # ── ML Engine Schemas ──
+    AudioProcessRequest:
+      required: [video_id, audio_key, frames_prefix]
+      type: object
+      properties:
+        video_id:
+          type: string
+          format: uuid
+        bucket_name:
+          type: string
+          default: "videos"
+        audio_key:
+          type: string
+          description: 'S3 ключ аудио. Пример: media/{id}/audio.wav'
+        frames_prefix:
+          type: string
+          description: 'S3 префикс кадров. Пример: media/{id}/frames/'
+
+    MLSearchRequest:
+      required: [query]
+      type: object
+      properties:
+        query:
+          type: string
+        top_k:
+          type: integer
+          default: 5
+
+    MLSearchResponse:
+      required: [results]
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/MLSearchResultItem"
+
+    MLSearchResultItem:
+      required: [video_id, score]
+      type: object
+      properties:
+        video_id:
+          type: string
+          format: uuid
+        score:
+          type: number
+          format: double
+        start_time:
+          type: number
+          format: double
+          nullable: true
+        end_time:
+          type: number
+          format: double
+          nullable: true
+        text_snippet:
+          type: string
+          nullable: true
+        source:
+          type: string
+          enum: [audio, frames, both]
+          default: audio
 
     ErrorResponse:
-      required:
-      - error_code
-      - message
+      required: [error_code, message]
       type: object
       properties:
         error_code:
           type: integer
         message:
           type: string
-
-    upload_body:
-      required:
-      - file
-      type: object
-      properties:
-        file:
-          type: string
-          format: binary
