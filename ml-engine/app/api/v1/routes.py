@@ -1,4 +1,4 @@
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 import asyncio
 import httpx
 import os
@@ -302,3 +302,30 @@ async def search(
     results = rrf_rank(audio_hits.points, frame_hits.points, top_k=request.top_k)
 
     return SearchResponse(results=results)
+
+@router.delete("/videos/{video_id}", status_code=204)
+async def delete_video(
+    video_id: str,
+    qdrant_service: QdrantService = Depends(get_qdrant_service),
+):
+    """
+    Удаляет аудио-чанки и кадры видео из Qdrant.
+
+    - 204 + счётчики удалённого, если что-то нашлось.
+    - 404, если не было ни одной точки ни в одной коллекции.
+    - 500, если Qdrant вернул ошибку.
+    """
+    try:
+        deleted = await asyncio.to_thread(qdrant_service.delete_video, video_id)
+    except Exception as e:
+        print(f"[delete_video {video_id}] Qdrant error: {e}")
+        raise HTTPException(status_code=500, detail=f"Qdrant delete failed: {e}")
+
+    if deleted is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No vectors found for video_id={video_id}",
+        )
+
+    print(f"[delete_video {video_id}] deleted: {deleted}")
+    return {"status": "deleted", "video_id": video_id, "deleted": deleted}
