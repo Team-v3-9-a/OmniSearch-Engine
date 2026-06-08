@@ -1,6 +1,8 @@
 import styles from "./VideoPage.module.css";
 import {useLocation, useParams, useSearchParams} from "react-router-dom";
 import {useRef} from "react";
+import {getVideoStream} from "@/api";
+import {useQuery} from "@tanstack/react-query";
 
 interface routerState {
   title: string;
@@ -20,20 +22,11 @@ export const VideoPage = () => {
   const location = useLocation()
   const { title, duration, created_date, snippet } = (location.state as routerState) || {}
 
-  // const { data: videoDetails, isLoading, isError} = useQuery({
-  //   queryKey: ['streamUrl', id, startTime],
-  //   queryFn: () => getVideoStream(id!),
-  //   enabled: !!id,
-  //   initialData: {
-  //     streamUrl: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/friday.mp4'
-  //   }
-  // })
-
-  const data = {
-    streamUrl: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/friday.mp4'
-  }
-  const isLoading = false;
-  const isError = false;
+  const { data, isLoading, isError} = useQuery({
+    queryKey: ['streamUrl', id, startTime],
+    queryFn: () => getVideoStream(id!),
+    enabled: !!id,
+  })
 
   const handleLoadedMetadata = () => {
     if( videoRef.current && startTime) {
@@ -44,12 +37,6 @@ export const VideoPage = () => {
   
   if (!id) return <p>Ошибка: ID видео не передан в URL</p>;
 
-  // console.log('Дебаг плеера:', {
-  //   isIdPresent: !!id,
-  //   isLoading,
-  //   url: videoDetails?.streamUrl
-  // });
-
   if (isLoading) return <p>Загрузка</p>
   if (isError) return <p>Ошибка</p>
 
@@ -59,7 +46,7 @@ export const VideoPage = () => {
         <div className={styles.playerWrapper}>
           <video
               ref={videoRef}
-              src={data?.streamUrl}
+              src={data?.url}
               controls
               muted
               crossOrigin="anonymous"

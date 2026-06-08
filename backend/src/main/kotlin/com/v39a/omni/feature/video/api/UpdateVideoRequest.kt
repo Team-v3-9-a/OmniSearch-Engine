@@ -1,8 +1,10 @@
-package com.v39a.omni.feature.video.domain.command
+package com.v39a.omni.feature.video.api
 
 import com.v39a.omni.feature.video.domain.VideoStatus
+import kotlinx.serialization.Serializable
 
-data class UpdateVideoMetadataCommand(
+@Serializable
+data class UpdateVideoRequest(
     val status: VideoStatus? = null,
     val error: String? = null,
     val durationSeconds: Long? = null,
