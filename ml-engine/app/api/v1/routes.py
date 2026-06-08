@@ -303,7 +303,7 @@ async def search(
 
     return SearchResponse(results=results)
 
-@router.delete("/videos/{video_id}", status_code=200)
+@router.delete("/videos/{video_id}", status_code=204)
 async def delete_video(
     video_id: str,
     qdrant_service: QdrantService = Depends(get_qdrant_service),
@@ -311,7 +311,7 @@ async def delete_video(
     """
     Удаляет аудио-чанки и кадры видео из Qdrant.
 
-    - 200 + счётчики удалённого, если что-то нашлось.
+    - 204 + счётчики удалённого, если что-то нашлось.
     - 404, если не было ни одной точки ни в одной коллекции.
     - 500, если Qdrant вернул ошибку.
     """
