@@ -1,9 +1,10 @@
 package com.v39a.omni.feature.video.infrastructure
 
-import com.v39a.omni.feature.video.domain.VideoStorage
+import com.v39a.omni.feature.video.port.VideoStorage
 import io.minio.GetPresignedObjectUrlArgs
 import io.minio.MinioClient
 import io.minio.PutObjectArgs
+import io.minio.RemoveObjectArgs
 import io.minio.http.Method
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -57,5 +58,14 @@ class MinioVideoStorage(
         val url = minioClient.getPresignedObjectUrl(args)
 
         return@withContext url
+    }
+
+    override suspend fun delete(s3Path: String) = withContext(Dispatchers.IO) {
+        minioClient.removeObject(
+            RemoveObjectArgs.builder()
+                .bucket(bucket)
+                .`object`(s3Path)
+                .build()
+        )
     }
 }

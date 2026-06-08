@@ -2,9 +2,9 @@ package com.v39a.omni.feature.video.domain.usecase
 
 import com.v39a.omni.core.exceptions.VideoNotFoundException
 import com.v39a.omni.core.exceptions.VideoNotReadyException
-import com.v39a.omni.feature.video.domain.VideoRepository
+import com.v39a.omni.feature.video.port.VideoRepository
 import com.v39a.omni.feature.video.domain.VideoStatus
-import com.v39a.omni.feature.video.domain.VideoStorage
+import com.v39a.omni.feature.video.port.VideoStorage
 import java.util.UUID
 
 class GetVideoStreamUrlUseCase(

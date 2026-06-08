@@ -4,10 +4,11 @@ import com.v39a.omni.core.util.dbQuery
 import com.v39a.omni.core.util.nowUTC
 import com.v39a.omni.feature.video.domain.command.UpdateVideoMetadataCommand
 import com.v39a.omni.feature.video.domain.Video
-import com.v39a.omni.feature.video.domain.VideoRepository
+import com.v39a.omni.feature.video.port.VideoRepository
 import com.v39a.omni.feature.video.domain.VideoStatus
 import com.v39a.omni.feature.video.infrastructure.VideoTable.id
 import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import java.util.*
 
 class PostgresVideoRepository : VideoRepository {
@@ -65,6 +66,10 @@ class PostgresVideoRepository : VideoRepository {
                 .where { id inList ids }
                 .map { toDomainModel(it) }
         }
+    }
+
+    override suspend fun deleteById(id: UUID): Unit = dbQuery {
+        VideoTable.deleteWhere{VideoTable.id eq id}
     }
 
     // маппинг строки БД в доменную модель
