@@ -34,7 +34,7 @@ suspend fun ApplicationCall.receiveVideoMultipart(): ParsedUploadRequest {
     var fileName = "unknown.mp4"
     var contentType = "video/mp4"
 
-    val multipart = receiveMultipart()
+    val multipart = receiveMultipart(formFieldLimit = Long.MAX_VALUE)
     while (true) {
         val part = multipart.readPart() ?: break
         when (part) {
