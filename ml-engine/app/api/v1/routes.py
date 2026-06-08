@@ -163,6 +163,118 @@ async def process_media(
     return {"status": "accepted", "video_id": request.video_id}
 
 
+# ────────────────────────────────────────────
+#  RRF-ранкинг гибридной выдачи
+# ────────────────────────────────────────────
+
+RRF_K = 60  # каноническое значение коэффициента сглаживания для RRF
+
+
+def _intervals_overlap(a_start: float, a_end: float,
+                       b_start: float, b_end: float) -> bool:
+    """True, если интервалы пересекаются."""
+    return a_start <= b_end and b_start <= a_end
+
+
+def _merge_hit_into_buckets(
+    buckets: list[dict],
+    video_id: str,
+    start_time: float,
+    end_time: float,
+    rank: int,
+    source: str,
+    text_snippet: str | None,
+):
+    """Найти существующий бакет с пересекающимся интервалом по тому же видео
+    и добавить туда вклад этого хита; иначе — создать новый бакет.
+    """
+    for bucket in buckets:
+        if bucket["video_id"] != video_id:
+            continue
+        if not _intervals_overlap(bucket["start_time"], bucket["end_time"], start_time, end_time):
+            continue
+        # Сливаем хит в существующий бакет.
+        bucket["rrf_score"] += 1.0 / (RRF_K + rank)
+        bucket["start_time"] = min(bucket["start_time"], start_time)
+        bucket["end_time"] = max(bucket["end_time"], end_time)
+        bucket["sources"].add(source)
+        # Текстовый сниппет берём только из аудио-хита и только если его ещё нет.
+        if text_snippet and not bucket["text_snippet"]:
+            bucket["text_snippet"] = text_snippet
+        return
+
+    buckets.append({
+        "video_id": video_id,
+        "start_time": start_time,
+        "end_time": end_time,
+        "rrf_score": 1.0 / (RRF_K + rank),
+        "sources": {source},
+        "text_snippet": text_snippet,
+    })
+
+
+def rrf_rank(audio_points, frame_points, top_k: int) -> list[SearchResultItem]:
+    """Слить хиты из аудио- и кадрового каналов в единый ранкинг через RRF."""
+    buckets: list[dict] = []
+
+    for rank, hit in enumerate(audio_points, start=1):
+        payload = hit.payload or {}
+        video_id = payload.get("video_id")
+        start_time = payload.get("start_time")
+        end_time = payload.get("end_time")
+        if video_id is None or start_time is None or end_time is None:
+            continue
+        _merge_hit_into_buckets(
+            buckets,
+            video_id=video_id,
+            start_time=float(start_time),
+            end_time=float(end_time),
+            rank=rank,
+            source="audio",
+            text_snippet=payload.get("text"),
+        )
+
+    for rank, hit in enumerate(frame_points, start=1):
+        payload = hit.payload or {}
+        video_id = payload.get("video_id")
+        start_time = payload.get("start_time")
+        end_time = payload.get("end_time")
+        if video_id is None or start_time is None or end_time is None:
+            continue
+        _merge_hit_into_buckets(
+            buckets,
+            video_id=video_id,
+            start_time=float(start_time),
+            end_time=float(end_time),
+            rank=rank,
+            source="frames",
+            text_snippet=None,
+        )
+
+    buckets.sort(key=lambda b: b["rrf_score"], reverse=True)
+
+    results: list[SearchResultItem] = []
+    
+    for bucket in buckets[:top_k]:
+        if bucket["sources"] == {"audio"}:
+            source = "audio"
+        elif bucket["sources"] == {"frames"}:
+            source = "frames"
+        else:
+            source = "both"
+
+        results.append(SearchResultItem(
+            video_id=bucket["video_id"],
+            score=bucket["rrf_score"],
+            text_snippet=bucket["text_snippet"],
+            start_time=bucket["start_time"],
+            end_time=bucket["end_time"],
+            source=source,
+        ))
+
+    return results
+
+
 # Поиск по аудио и кадрам
 @router.post("/search", response_model=SearchResponse)
 async def search(
@@ -179,36 +291,14 @@ async def search(
         clip_text_embedding_future
     )
 
-    audio_hits_future = asyncio.to_thread(qdrant_service.search, audio_embedding, request.top_k)
-    frame_hits_future = asyncio.to_thread(qdrant_service.search_frames, clip_text_embedding, request.top_k)
+    # Берём с запасом по каждому каналу — даём RRF-слиянию материал для работы.
+    per_channel_k = max(request.top_k * 5, 20)
+
+    audio_hits_future = asyncio.to_thread(qdrant_service.search_audio, audio_embedding, per_channel_k)
+    frame_hits_future = asyncio.to_thread(qdrant_service.search_frames, clip_text_embedding, per_channel_k)
 
     audio_hits, frame_hits = await asyncio.gather(audio_hits_future, frame_hits_future)
 
-    results: list[SearchResultItem] = []
-
-    # Результаты из аудио
-    for hit in audio_hits.points:
-        results.append(SearchResultItem(
-            video_id=hit.payload.get("video_id"),
-            score=hit.score,
-            text_snippet=hit.payload.get("text"),
-            start_time=hit.payload.get("start_time"),
-            end_time=hit.payload.get("end_time"),
-            source="audio",
-        ))
-
-    # Результаты из кадров
-    for hit in frame_hits.points:
-        results.append(SearchResultItem(
-            video_id=hit.payload.get("video_id"),
-            score=hit.score,
-            start_time=hit.payload.get("start_time"),
-            end_time=hit.payload.get("end_time"),
-            source="frames",
-        ))
-
-    # Сортировка по score (лучшие сверху)
-    results.sort(key=lambda r: r.score, reverse=True)
-    print(results)
+    results = rrf_rank(audio_hits.points, frame_hits.points, top_k=request.top_k)
 
     return SearchResponse(results=results)

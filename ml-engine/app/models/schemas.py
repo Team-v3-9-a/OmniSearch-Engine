@@ -20,7 +20,7 @@ class SearchResultItem(BaseModel):
     start_time: Optional[float] = None
     end_time: Optional[float] = None
     text_snippet: Optional[str] = None
-    source: Literal["audio", "frames"] = "audio"
+    source: Literal["audio", "frames", "both"] = "audio"
 
 class SearchResponse(BaseModel):
     results: List[SearchResultItem]
