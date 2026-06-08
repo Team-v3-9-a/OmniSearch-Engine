@@ -138,6 +138,20 @@ paths:
         "404":
           description: Видео не найдено.
 
+    delete:
+      tags: [Video Management]
+      summary: Удаление видео
+      description: |
+        Каскадное удаление видео: запись из PostgreSQL, объекты из MinIO
+        (исходное видео + media/{id}/*), векторы из Qdrant (через ML Engine).
+      parameters:
+      - $ref: "#/components/parameters/VideoId"
+      responses:
+        "204":
+          description: Видео успешно удалено.
+        "404":
+          description: Видео с таким ID не найдено.
+
   # ───────────────────────────────────────────────
   #  INTERNAL API
   # ───────────────────────────────────────────────
