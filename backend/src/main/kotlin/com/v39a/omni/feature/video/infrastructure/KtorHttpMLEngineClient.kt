@@ -1,22 +1,23 @@
 package com.v39a.omni.feature.video.infrastructure
 
+import com.v39a.omni.core.config.SecurityConfig
 import com.v39a.omni.core.exceptions.MLEngineUnavailableException
 import com.v39a.omni.feature.video.port.MLEngineClient
 import com.v39a.omni.feature.video.port.MLEngineSearchResult
-import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.client.statement.HttpResponse
-import io.ktor.http.ContentType
-import io.ktor.http.contentType
-import io.ktor.http.isSuccess
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
+import java.util.*
 
 class KtorHttpMLEngineClient(
-    private val client: HttpClient
+    private val client: HttpClient,
+    private val securityConfig: SecurityConfig,
 ) : MLEngineClient, AutoCloseable {
+
 
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -75,6 +76,21 @@ class KtorHttpMLEngineClient(
                 endTime = it.end_time,
                 textSnippet = it.text_snippet
             )
+        }
+    }
+
+    override suspend fun deleteVectors(videoId: UUID) {
+        val response = client.delete("$baseUrl/api/v1/internal/vectors/$videoId") {
+            header("X-Internal-Secret", securityConfig.internalSecret)
+        }
+
+        when (response.status) {
+            HttpStatusCode.NoContent -> return
+            HttpStatusCode.NotFound -> {
+                logger.warn("Vectors for video $videoId not found in ML Engine")
+                return
+            }
+            else -> throw MLEngineUnavailableException("Status: ${response.status}")
         }
     }
 

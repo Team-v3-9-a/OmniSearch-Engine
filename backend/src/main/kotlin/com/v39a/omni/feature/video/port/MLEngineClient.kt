@@ -1,5 +1,7 @@
 package com.v39a.omni.feature.video.port
 
+import java.util.UUID
+
 data class MLEngineSearchResult(
     val videoId: String,
     val score: Double,
@@ -10,4 +12,5 @@ data class MLEngineSearchResult(
 
 interface MLEngineClient {
     suspend fun search(query: String, topK: Int = 10): List<MLEngineSearchResult>
+    suspend fun deleteVectors(videoId: UUID)
 }
