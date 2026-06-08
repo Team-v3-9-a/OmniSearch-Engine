@@ -1,17 +1,27 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import styles from './MyVideosPage.module.css'
-import { getMyVideos } from '@/api';
+import {deleteVideo, getMyVideos} from '@/api';
 import type { MyVideoItem } from '@/types/api.ts';
 import { parseDate } from '@/utils/parseDate';
 import { VideoFileIcon } from '@/assets/Icons/VideoFile';
 import { StatusLabel } from '@/components/StatusLabel/StatusLabel';
 import { useUploadStore } from '@/store/useUploadStore.ts';
+import {mockData} from "@/components/Pages/MyVideosPage/mockData.ts";
+import {TrashIcon} from "@/assets/Icons/TrashIcon.tsx";
+import {useState} from "react";
 
 export const MyVideosPage = () => {
   const { tasks } = useUploadStore();
 
+  const queryClient = useQueryClient();
+
+  const [openModal, setOpenModal] = useState(false);
+  const [deleteVideoValue, setDeleteVideoValue] = useState<string>('');
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const { data = [], isLoading, error } = useQuery<MyVideoItem[]>({
     queryKey: ['my-videos'],
+    initialData: mockData,
     queryFn: getMyVideos
   })
 
@@ -38,6 +48,19 @@ export const MyVideosPage = () => {
     }
   });
 
+  const handleDelete = async (videoId: string) => {
+    setIsDeleting(true);
+    try {
+      await deleteVideo(videoId);
+      await queryClient.invalidateQueries({ queryKey: ['my-videos'] });
+      setOpenModal(false);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
   const inProgressVideos = combinedVideos.filter((video) => !['READY', 'ERROR'].includes(video.status));
   const completedVideos = combinedVideos.filter((video) => ['READY', 'ERROR'].includes(video.status));
 
@@ -51,6 +74,13 @@ export const MyVideosPage = () => {
           <VideoFileIcon className={styles.videoIcon} />
           <h4 className={styles.videoTitle}>{video.title}</h4>
         </div>
+
+        <button className={styles.deleteButton} onClick={ () => {
+          setOpenModal(true)
+          setDeleteVideoValue(video.id)
+        }}>
+          <TrashIcon width={15} height={15} color={'var(--error-color)'} />
+        </button>
 
         <div className={styles.statusWrapper}>
           <p className={styles.videoStatus}>Статус:</p>
@@ -88,6 +118,30 @@ export const MyVideosPage = () => {
 
   return (
     <main className={styles.mainContainer}>
+
+      <div className={`${styles.overlay} ${openModal ? '' : styles.hidden}`}>
+        <div className={styles.window}>
+
+          <p>
+            Вы уверены что хотите удалить видео?
+          </p>
+
+          <div className={styles.buttonsContainer}>
+            <button className={styles.cancel} onClick={() => {setOpenModal(false)}}>
+              Отмена
+            </button>
+            <button
+              className={styles.agree}
+              disabled={isDeleting}
+              onClick={() => handleDelete(deleteVideoValue)}
+            >
+              {isDeleting ? 'Удаление...' : 'Да'}
+            </button>
+          </div>
+
+        </div>
+      </div>
+
       <h3 className={styles.title}>Мои видео</h3>
       <p className={styles.description}>Здесь будут отображаться ваши загруженные видео.</p>
 
