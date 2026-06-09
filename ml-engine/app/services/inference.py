@@ -73,9 +73,16 @@ class MLService:
     
     def get_image_embeddings_batch(self, image_paths: list[str]) -> list[list[float]]:
         """Получение эмбеддингов для пакета изображений через CLIP Vision."""
-        images = [Image.open(p) for p in image_paths]
-        embeddings = self.clip_vision.encode(images, normalize_embeddings=True, batch_size=32)
-        return [emb.tolist() for emb in embeddings]
+        all_embeddings = []
+        batch_size = 32
+        for i in range(0, len(image_paths), batch_size):
+            batch_paths = image_paths[i:i + batch_size]
+            images = [Image.open(p) for p in batch_paths]
+            embeddings = self.clip_vision.encode(images, normalize_embeddings=True, batch_size=batch_size)
+            all_embeddings.extend([emb.tolist() for emb in embeddings])
+            for img in images:
+                img.close()
+        return all_embeddings
     
     def get_vision_text_embedding(self, text: str):
         """Получение текстового эмбеддинга через CLIP Text (мультиязычный)."""
