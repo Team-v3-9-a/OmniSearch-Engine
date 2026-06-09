@@ -251,7 +251,7 @@ services:
       resources:
         limits:
           cpus: "2.0"
-          memory: 4G
+          memory: 6G
         reservations:
           devices:
             - driver: nvidia
