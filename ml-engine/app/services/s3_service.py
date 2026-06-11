@@ -21,12 +21,25 @@ class S3Service:
             raise Exception(f"Failed to download {object_key} from {bucket_name}")
 
     def list_objects(self, bucket_name: str, prefix: str) -> list[str]:
-        """Возвращает список ключей объектов в бакете по заданному prefix."""
+        """Возвращает все ключи объектов в бакете по prefix (через paginator)."""
+        keys: list[str] = []
         try:
-            response = self.s3.list_objects_v2(Bucket=bucket_name, Prefix=prefix)
-            if "Contents" not in response:
-                return []
-            return [obj["Key"] for obj in response["Contents"]]
+            paginator = self.s3.get_paginator("list_objects_v2")
+            for page in paginator.paginate(Bucket=bucket_name, Prefix=prefix):
+                for obj in page.get("Contents", []):
+                    keys.append(obj["Key"])
+            return keys
+        except ClientError as e:
+            print(f"Error listing objects in S3: {e}")
+            raise Exception(f"Failed to list objects with prefix {prefix} in {bucket_name}")
+
+    def iter_objects(self, bucket_name: str, prefix: str):
+        """Стримит ключи по одному, не накапливая весь список в памяти."""
+        try:
+            paginator = self.s3.get_paginator("list_objects_v2")
+            for page in paginator.paginate(Bucket=bucket_name, Prefix=prefix):
+                for obj in page.get("Contents", []):
+                    yield obj["Key"]
         except ClientError as e:
             print(f"Error listing objects in S3: {e}")
             raise Exception(f"Failed to list objects with prefix {prefix} in {bucket_name}")

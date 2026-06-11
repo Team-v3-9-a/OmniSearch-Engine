@@ -12,8 +12,9 @@ class MLService:
         self.whisper = WhisperModel(
             "large-v3", 
             device=self.device, 
-            compute_type="int8",
-            download_root="/models/whisper"
+            compute_type="int8_float16",
+            download_root="/models/whisper",
+            num_workers=2
         )
 
         cache_folder = "/models/sentence_transformers"
@@ -74,14 +75,22 @@ class MLService:
     def get_image_embeddings_batch(self, image_paths: list[str]) -> list[list[float]]:
         """Получение эмбеддингов для пакета изображений через CLIP Vision."""
         all_embeddings = []
-        batch_size = 32
+        batch_size = 32 # Оптимальный размер пакета для CLIP
         for i in range(0, len(image_paths), batch_size):
             batch_paths = image_paths[i:i + batch_size]
-            images = [Image.open(p) for p in batch_paths]
-            embeddings = self.clip_vision.encode(images, normalize_embeddings=True, batch_size=batch_size)
-            all_embeddings.extend([emb.tolist() for emb in embeddings])
-            for img in images:
-                img.close()
+            images = []
+            try:
+                for p in batch_paths:
+                    with Image.open(p) as img:
+                        img.load()
+                        images.append(img.convert("RGB"))
+                embeddings = self.clip_vision.encode(images, normalize_embeddings=True, batch_size=batch_size, convert_to_numpy=True)
+                all_embeddings.extend(embeddings.tolist())
+            finally:  
+                for img in images:
+                    img.close()
+                if self.device == "cuda":
+                    torch.cuda.empty_cache()
         return all_embeddings
     
     def get_vision_text_embedding(self, text: str):

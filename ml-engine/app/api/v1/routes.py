@@ -15,10 +15,6 @@ from app.core.dependencies import get_ml_service, get_qdrant_service, get_s3_ser
 router = APIRouter()
 
 
-# ────────────────────────────────────────────
-#  Фоновая задача: обработка аудио + кадров
-# ────────────────────────────────────────────
-
 def process_media_task(
     video_id: str,
     audio_key: str,
@@ -37,7 +33,7 @@ def process_media_task(
     temp_audio_path = os.path.join(temp_dir, "audio.wav")
 
     try:
-        # ── Этап 1: Аудио ──
+        # Аудио
         print(f"[{video_id}] Downloading audio: {audio_key}")
         s3.download_file(bucket_name=bucket_name, object_key=audio_key, local_path=temp_audio_path)
 
@@ -49,10 +45,10 @@ def process_media_task(
         saved_audio = qdrant.upsert_chunks(video_id=video_id, chunks=chunks, vectors=vectors)
         print(f"[{video_id}] Audio processed: {saved_audio} chunks saved.")
 
-        # ── Этап 2: Кадры (CLIP) ──
+        # Кадры (CLIP)
         print(f"[{video_id}] Listing frames with prefix: {frames_prefix}")
         frame_keys = s3.list_objects(bucket_name=bucket_name, prefix=frames_prefix)
-        # Фильтруем только .jpg файлы
+        # только .jpg
         frame_keys = [k for k in frame_keys if k.lower().endswith(".jpg")]
         print(f"[{video_id}] Found {len(frame_keys)} frame(s).")
 
@@ -79,47 +75,75 @@ def _process_frames(
     qdrant: QdrantService,
     s3: S3Service,
 ):
-    """Скачивание кадров, парсинг таймкодов, создание CLIP-эмбеддингов и сохранение в Qdrant."""
+    """Стриминговая обработка кадров батчами."""
+    BATCH_SIZE = 64  # подобрано под 16GB VRAM
+
     frames_dir = os.path.join(temp_dir, "frames")
     os.makedirs(frames_dir, exist_ok=True)
 
-    frame_metadata = []
-    local_paths = []
+    batch_meta: list[dict] = []
+    batch_paths: list[str] = []
+    total_saved = 0
+    skipped = 0
 
-    for key in sorted(frame_keys):
-        filename = os.path.basename(key)
-        timecodes = MLService.parse_frame_timecodes(filename)
-        if timecodes is None:
-            print(f"[{video_id}] Skipping frame with unparseable name: {filename}")
-            continue
+    def flush_batch():
+        nonlocal total_saved
+        if not batch_paths:
+            return
+        vectors = ml.get_image_embeddings_batch(batch_paths)
+        saved = qdrant.upsert_frames(video_id=video_id, frames=batch_meta, vectors=vectors)
+        total_saved += saved
+        for p in batch_paths:
+            try:
+                os.remove(p)
+            except OSError as e:
+                print(f"[{video_id}] Failed to remove {p}: {e}")
+        batch_meta.clear()
+        batch_paths.clear()
 
-        local_path = os.path.join(frames_dir, filename)
-        s3.download_file(bucket_name=bucket_name, object_key=key, local_path=local_path)
+    try:
+        for key in sorted(frame_keys):
+            filename = os.path.basename(key)
+            timecodes = MLService.parse_frame_timecodes(filename)
+            if timecodes is None:
+                print(f"[{video_id}] Skipping frame with unparseable name: {filename}")
+                skipped += 1
+                continue
 
-        frame_metadata.append({
-            "frame_index": timecodes["index"],
-            "start_time": timecodes["start_time"],
-            "end_time": timecodes["end_time"],
-            "frame_key": key,
-        })
-        local_paths.append(local_path)
+            local_path = os.path.join(frames_dir, filename)
+            s3.download_file(bucket_name=bucket_name, object_key=key, local_path=local_path)
 
-    if not local_paths:
+            batch_meta.append({
+                "frame_index": timecodes["index"],
+                "start_time": timecodes["start_time"],
+                "end_time": timecodes["end_time"],
+                "frame_key": key,
+            })
+            batch_paths.append(local_path)
+
+            if len(batch_paths) >= BATCH_SIZE:
+                print(f"[{video_id}] Flushing batch ({len(batch_paths)} frames)...")
+                flush_batch()
+
+        # Хвост последнего неполного батча.
+        if batch_paths:
+            print(f"[{video_id}] Flushing final batch ({len(batch_paths)} frames)...")
+            flush_batch()
+
+    finally:
+        batch_meta.clear()
+        batch_paths.clear()
+
+    if total_saved == 0 and skipped == len(frame_keys):
         print(f"[{video_id}] No valid frames to process.")
         return
 
-    print(f"[{video_id}] Generating CLIP embeddings for {len(local_paths)} frames...")
-    frame_vectors = ml.get_image_embeddings_batch(local_paths)
+    print(f"[{video_id}] Frames processed: {total_saved} embeddings saved "
+          f"({skipped} skipped).")
 
-    saved_frames = qdrant.upsert_frames(video_id=video_id, frames=frame_metadata, vectors=frame_vectors)
-    print(f"[{video_id}] Frames processed: {saved_frames} frame embeddings saved.")
-
-
-# ────────────────────────────────────────────
-#  Callback к Backend
-# ────────────────────────────────────────────
 
 def _send_status_callback(video_id: str, payload: dict):
+    """Отправляет статус обработки видео обратно в бэкенд с несколькими попытками при неудаче."""
     backend_url = os.getenv("BACKEND_URL", "http://backend:8000")
     url = f"{backend_url}/api/v1/internal/videos/{video_id}"
     for attempt in range(1, 4):
@@ -135,10 +159,6 @@ def _send_status_callback(video_id: str, payload: dict):
                 print(f"All callback attempts exhausted for video {video_id}.")
             time.sleep(2 ** attempt)
 
-
-# ────────────────────────────────────────────
-#  Эндпоинты
-# ────────────────────────────────────────────
 
 # Обработка медиа (аудио + кадры)
 @router.post("/process", status_code=202)
@@ -162,10 +182,6 @@ async def process_media(
     )
     return {"status": "accepted", "video_id": request.video_id}
 
-
-# ────────────────────────────────────────────
-#  RRF-ранкинг гибридной выдачи
-# ────────────────────────────────────────────
 
 RRF_K = 60  # каноническое значение коэффициента сглаживания для RRF
 
