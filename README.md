@@ -34,6 +34,11 @@ graph TB
         VE[Video Engine<br/>Go]
         ML[ML Engine<br/>Python FastAPI]
     end
+
+    subgraph Monitoring
+        PROM[(Prometheus<br/>Metrics Collector)]
+        GRAF[Grafana<br/>Dashboards]
+    end
     
     subgraph Data_Layer
         PG[(PostgreSQL<br/>Metadata)]
@@ -45,6 +50,7 @@ graph TB
     NGINX -->|Proxy| BE
     NGINX -->|Proxy| FE
     NGINX -->|/s3/| S3
+    NGINX -->|/grafana/| GRAF
     
     BE -->|JDBC| PG
     BE -->|S3 SDK| S3
@@ -56,6 +62,10 @@ graph TB
     
     ML -->|gRPC| QD
     ML -->|S3 SDK| S3
+
+    PROM -->|Scrape| BE
+    PROM -->|Scrape| ML
+    GRAF -->|Query| PROM
 ```
 
 ### Компонентная диаграмма
@@ -267,6 +277,10 @@ OmniSearch-Engine/
 ├── nginx/
 │   └── gateway.conf            # Nginx конфигурация (reverse proxy)
 │
+├── monitoring/                 # Конфигурация системы мониторинга (Prometheus & Grafana)
+│   ├── prometheus/             # Настройки сбора метрик Prometheus
+│   └── grafana/                # Настройки источников данных и JSON дашбордов
+│
 ├── docs/
 │   └── api/openapi.yaml        # OpenAPI 3.0 спецификация
 │
@@ -340,7 +354,8 @@ docker compose up --build
 |--------|-----|----------|
 | **Frontend** | http://localhost:3000 | Веб-интерфейс |
 | **Backend API** | http://localhost:3000/api/v1 | REST API |
-| **MinIO Console** | http://localhost:9001 | Админка S3 (login: `minioadmin`) |
+| **MinIO Console** | http://localhost:3000/minio-console | Админка S3 |
+| **Grafana** | http://localhost:3000/grafana | Панель мониторинга (login: `admin`) |
 | **Qdrant Dashboard** | http://localhost:6333/dashboard | Векторная БД |
 | **Video Engine** | http://localhost:8081/health | Health check |
 | **ML Engine** | http://localhost:8000/health | Health check |
@@ -606,6 +621,22 @@ pytest
 5. ✅ **Docker** — `docker buildx bake` (с кэшированием через GitHub Actions Cache)
 
 ## 📊 Мониторинг и логи
+
+### Метрики и Дашборды (Prometheus + Grafana)
+
+Система содержит встроенный мониторинг на базе Prometheus и Grafana:
+- **Метрики Ktor бэкенда**: доступны внутри сети по адресу `http://backend:8080/metrics`
+- **Метрики ML Engine**: доступны внутри сети по адресу `http://ml-engine:8000/metrics`
+- **Панель Grafana**: доступна по адресу `http://localhost:3000/grafana` (вход: `admin` / `password_grafana_123` по умолчанию). 
+
+Настроен автоматический импорт (provisioning) источника данных Prometheus и готового дашборда **OmniSearch Overview**, который отслеживает:
+- **SLA Uptime API** (доступность сервиса)
+- **Количество активных видео и видео в обработке**
+- **Размер S3 хранилища MinIO**
+- **Графики загрузки и обработки видео**
+- **Длительность обработки видео** (медиана и 95-й процентиль)
+- **Латентность и интенсивность поиска** (AVG, 95-й и 99-й процентили)
+- **Количество векторов в Qdrant**
 
 ### Health Checks
 
