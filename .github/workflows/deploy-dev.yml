@@ -4,7 +4,6 @@ on:
   push:
     branches: [preprod]
 
-# Не запускать параллельно несколько деплоев dev
 concurrency:
   group: deploy-dev
   cancel-in-progress: true
@@ -21,11 +20,11 @@ jobs:
           git checkout preprod
           git reset --hard origin/preprod
 
-      - name: Build and restart containers
+      - name: Build and deploy containers
         run: |
           cd /home/omnisearch/omnisearch/dev/OmniSearch-Engine
           docker compose -f docker-compose.dev.yml --env-file .env.dev up -d --build --remove-orphans
-          docker compose -f docker-compose.dev.yml --env-file .env.dev restart gateway
+          docker compose -f docker-compose.dev.yml --env-file .env.dev exec gateway nginx -s reload
 
       - name: Cleanup old images
         run: docker image prune -f
