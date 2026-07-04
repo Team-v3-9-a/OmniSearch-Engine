@@ -25,6 +25,7 @@ fun main(args: Array<String>) {
 
 fun Application.module() {
     configureFrameworks()
+    configureMetrics()
     configureSerialization()
     configureHTTP()
     configureRouting()

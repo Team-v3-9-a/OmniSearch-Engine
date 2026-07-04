@@ -55,6 +55,7 @@ class UploadVideoUseCase(
         )
 
         videoRepository.create(video)
+        com.v39a.omni.plugins.MetricsManager.videosUploaded.increment()
 
         backgroundScope.launch {
             try {

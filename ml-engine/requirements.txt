@@ -4,6 +4,7 @@ httpx>=0.28.0
 uvicorn[standard]>=0.40.0
 pydantic>=2.9.0
 asyncio
+prometheus-client>=0.21.0
 
 # ML & Audio
 torchaudio
