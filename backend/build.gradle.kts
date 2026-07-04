@@ -40,6 +40,8 @@ dependencies {
     implementation(libs.minio)
     implementation("io.github.cdimascio:dotenv-kotlin:6.5.1")
     implementation("io.ktor:ktor-server-cors:2.3.4")
+    implementation(libs.ktor.server.metrics.micrometer)
+    implementation(libs.micrometer.registry.prometheus)
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test.junit)
 }

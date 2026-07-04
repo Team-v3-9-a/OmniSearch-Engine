@@ -1,0 +1,11 @@
+apiVersion: 1
+providers:
+  - name: 'OmniSearch'
+    orgId: 1
+    folder: 'OmniSearch'
+    type: file
+    disableDeletion: false
+    editable: true
+    updateIntervalSeconds: 10
+    options:
+      path: /var/lib/grafana/dashboards

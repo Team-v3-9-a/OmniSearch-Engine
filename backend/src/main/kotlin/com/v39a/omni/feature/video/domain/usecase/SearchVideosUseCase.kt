@@ -19,8 +19,14 @@ class SearchVideosUseCase(
             return emptyList()
         }
 
+        val startTime = System.nanoTime()
+        com.v39a.omni.plugins.MetricsManager.searchRequests.increment()
+
         val mlResults = mlEngineClient.search(query)
         if (mlResults.isEmpty()) {
+            val durationMs = (System.nanoTime() - startTime) / 1_000_000
+            com.v39a.omni.plugins.MetricsManager.searchLatency.record(durationMs, java.util.concurrent.TimeUnit.MILLISECONDS)
+            com.v39a.omni.plugins.MetricsManager.searchResultsCount.record(0.0)
             return emptyList()
         }
 
@@ -33,6 +39,9 @@ class SearchVideosUseCase(
         }.toSet()
 
         if (videoIds.isEmpty()) {
+            val durationMs = (System.nanoTime() - startTime) / 1_000_000
+            com.v39a.omni.plugins.MetricsManager.searchLatency.record(durationMs, java.util.concurrent.TimeUnit.MILLISECONDS)
+            com.v39a.omni.plugins.MetricsManager.searchResultsCount.record(0.0)
             return emptyList()
         }
 
@@ -88,6 +97,10 @@ class SearchVideosUseCase(
                 )
             )
         }
+
+        val durationMs = (System.nanoTime() - startTime) / 1_000_000
+        com.v39a.omni.plugins.MetricsManager.searchLatency.record(durationMs, java.util.concurrent.TimeUnit.MILLISECONDS)
+        com.v39a.omni.plugins.MetricsManager.searchResultsCount.record(results.size.toDouble())
 
         return results
     }
