@@ -370,12 +370,12 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum(rate(omnisearch_pipeline_duration_seconds_bucket[5m])) by (le))",
+          "expr": "omnisearch_pipeline_duration_seconds{quantile=\"0.95\"}",
           "legendFormat": "95-й процентиль обработки",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.50, sum(rate(omnisearch_pipeline_duration_seconds_bucket[5m])) by (le))",
+          "expr": "omnisearch_pipeline_duration_seconds{quantile=\"0.5\"}",
           "legendFormat": "Медиана обработки (50-й %)",
           "refId": "B"
         }
@@ -454,12 +454,12 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.99, sum(rate(omnisearch_search_latency_seconds_bucket[5m])) by (le))",
+          "expr": "omnisearch_search_latency_seconds{quantile=\"0.99\"}",
           "legendFormat": "99-й процентиль латентности",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(omnisearch_search_latency_seconds_bucket[5m])) by (le))",
+          "expr": "omnisearch_search_latency_seconds{quantile=\"0.95\"}",
           "legendFormat": "95-й процентиль латентности",
           "refId": "B"
         },
